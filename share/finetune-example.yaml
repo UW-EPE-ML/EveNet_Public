@@ -1,5 +1,7 @@
 platform:
   data_parquet_dir: <data_parquet_dir>
+  # this is optional, only needed if you have a separate validation directory
+  # data_parquet_val_dir: <data_parquet_val_dir>
   number_of_workers: 1 # Adjust based on your system
   resources_per_worker: {
     "CPU": 1,
