@@ -81,7 +81,7 @@ class InputDictionarySanityChecker:
 
         event_particles = getattr(getattr(global_config, "event_info", None), "event_particles", {}) or {}
         if event_particles:
-            resonance_slots = max((len(particles.names) for particles in event_particles.values()), default=None)
+            resonance_slots = sum((len(particles.names) for particles in event_particles.values()))
 
         product_particles = getattr(getattr(global_config, "event_info", None), "product_particles", {}) or {}
         if product_particles:
