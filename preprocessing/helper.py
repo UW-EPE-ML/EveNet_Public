@@ -1,11 +1,21 @@
-import numpy as np
 import json
+import logging
+from pathlib import Path
+
+import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
-from pathlib import Path
 
 from evenet.dataset.preprocess import flatten_dict
 from evenet.dataset.postprocess import PostProcessor
+from preprocessing.sanity_checks import InputDictionarySanityChecker
+
+
+# ======================================================================
+# Logging
+# ======================================================================
+
+logger = logging.getLogger(__name__)
 
 
 # ======================================================================
@@ -63,6 +73,13 @@ def slice_event_dict(data, idx, n_events):
 
 
 # ======================================================================
+# Sanity Checks
+# ======================================================================
+
+sanity_checker = InputDictionarySanityChecker()
+
+
+# ======================================================================
 # Processing Logic
 # ======================================================================
 
@@ -80,6 +97,8 @@ def process_dict(
     Process a single *per-event dictionary* (after splitting or direct loading).
     Update shape metadata, statistics, and append arrow chunk.
     """
+    sanity_checker.run(pdict)
+
     if all(len(arr) == 0 for arr in pdict.values()):
         return shape_metadata
 
