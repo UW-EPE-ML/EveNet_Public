@@ -10,7 +10,6 @@ from evenet.dataset.preprocess import flatten_dict
 from evenet.dataset.postprocess import PostProcessor
 from preprocessing.sanity_checks import InputDictionarySanityChecker
 
-
 # ======================================================================
 # Logging
 # ======================================================================
@@ -224,7 +223,6 @@ def process_dict(
         segment_regression=pdict["segmentation-momentum"] if "segmentation-momentum" in pdict else None,
     )
 
-
     return shape_metadata
 
 
@@ -369,4 +367,3 @@ def preprocess(
         json.dump(shape_metadata, f)
 
     PostProcessor.merge([train_stats], saved_results_path=store_dir)
-
