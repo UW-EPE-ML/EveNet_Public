@@ -87,9 +87,6 @@ class EveNetModel(nn.Module):
         self.global_input_dim: int = global_normalizer_info["norm_mask"].size()[-1]
         self.sequential_input_dim: int = input_normalizers_setting["SEQUENTIAL"]["norm_mask"].size()[-1]
         self.local_feature_indices = self.network_cfg.Body.PET.local_point_index
-        self.invisible_input_dim: int = len(normalization_dict["invisible_mean"]["Source"])
-        self.invisible_padding: int = self.sequential_input_dim - self.invisible_input_dim
-        assert self.invisible_padding >= 0, f"Invisible Padding size {self.invisible_padding} is negative. "
 
         self.sequential_normalizer = Normalizer(
             norm_mask=input_normalizers_setting["SEQUENTIAL"]["norm_mask"].to(self.device),
@@ -112,6 +109,10 @@ class EveNetModel(nn.Module):
             )
 
         if self.include_neutrino_generation:
+            self.invisible_input_dim: int = len(normalization_dict["invisible_mean"]["Source"])
+            self.invisible_padding: int = self.sequential_input_dim - self.invisible_input_dim
+            assert self.invisible_padding >= 0, f"Invisible Padding size {self.invisible_padding} is negative. "
+
             self.invisible_normalizer = Normalizer(
                 mean=normalization_dict["invisible_mean"]["Source"].to(self.device),
                 std=normalization_dict["invisible_std"]["Source"].to(self.device),
