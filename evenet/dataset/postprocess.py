@@ -4,6 +4,8 @@ from decimal import Decimal, getcontext
 from collections import OrderedDict
 import warnings
 
+from torch import Tensor
+
 
 def masked_stats(arr, weights=None):
     mask = arr != 0
@@ -24,39 +26,6 @@ def masked_stats(arr, weights=None):
     count = factor.sum(axis=0)
 
     return {"sum": sum_, "sumsq": sumsq, "count": count}
-
-
-def compute_effective_counts_from_freq(freqs: np.ndarray) -> np.ndarray:
-    """
-    Compute class-balanced weights based on effective number of samples.
-    Ref: https://arxiv.org/pdf/1901.05555.pdf
-
-    Args:
-        freqs (np.ndarray): Array of sample counts per class. Index is class label.
-
-    Returns:
-        np.ndarray: Class weights normalized so that sum ≈ number of classes.
-    """
-    # TODO: check numerical stability
-
-    freqs = freqs.astype(np.longdouble)
-    N = freqs.sum()
-    if N == 0:
-        raise ValueError("Total number of samples is zero. Check input frequencies.")
-
-    beta = 1 - (1 / N)
-
-    with np.errstate(divide='ignore', invalid='ignore'):
-        # Avoid direct power to prevent underflow
-        log_beta = np.log(beta)
-        power_term = np.exp(freqs * log_beta)
-        effective_num = (1.0 - power_term) / (1.0 - beta)
-
-        weights = 1.0 / effective_num
-        weights[~np.isfinite(weights)] = 0.0  # fix nan/inf
-        weights = weights * len(freqs) / weights.sum()  # Normalize to total class count
-
-    return weights
 
 
 def compute_effective_counts_from_freq_decimal(freqs: list[float], precision: int = 50) -> np.ndarray:
@@ -125,76 +94,34 @@ def compute_classification_balance(class_counts: np.ndarray) -> np.ndarray:
     return compute_effective_counts_from_freq_decimal(class_counts.tolist(), precision=50)
 
 
-def merge_stats(stats_list):
-    def merge_two(a, b):
-        return {
-            "sum": a["sum"] + b["sum"],
-            "sumsq": a["sumsq"] + b["sumsq"],
-            "count": a["count"] + b["count"]
-        }
+def merge_stat_maps(stats_list, key):
+    """Merge stats only if key exists inside stats_list."""
+    present = [s[key] for s in stats_list if key in s]
+    if not present:
+        return None
 
-    def compute_mean_std(agg):
-        count = agg["count"]
-        sum_ = agg["sum"]
-        sumsq = agg["sumsq"]
+    # merge sums
+    merged = {k: sum(d[k] for d in present) for k in ["sum", "sumsq", "count"]}
 
-        # Avoid divide-by-zero
-        safe_count = np.where(count == 0, 1, count)
+    # compute final mean/std
+    count = merged["count"]
+    safe_count = np.where(count == 0, 1, count)
+    mean = merged["sum"] / safe_count
+    variance = merged["sumsq"] / safe_count - mean ** 2
+    variance = np.clip(variance, 0, None)
+    std = np.sqrt(variance)
 
-        mean = sum_ / safe_count
-        variance = sumsq / safe_count - mean ** 2
-        variance = np.clip(variance, a_min=0.0, a_max=None)
-        std = np.sqrt(variance)
+    mean = np.where(count == 0, 0, mean)
+    std = np.where(std == 0, 1, std)
 
-        # Set mean = 0, std = 1 for features with no data
-        mean = np.where(count == 0, 0.0, mean)
-        std = np.where(count == 0, 1.0, std)
-        std = np.where(std == 0, 1.0, std)
+    return {"mean": mean, "std": std, "count": count}
 
-        return {'mean': mean, 'std': std}
 
-    # Accumulate across all files
-    total = {
-        "x": None,
-        "conditions": None,
-        "regression": None,
-        "input_num": None,
-        "invisible": None,
-        'segment_regression': None,
-    }
-
-    for s in stats_list:
-        for key in total.keys():
-            if total[key] is None:
-                total[key] = s[key]
-            else:
-                total[key] = merge_two(total[key], s[key])
-
-    total['class_counts'] = np.sum([s["class_counts"] for s in stats_list], axis=0)
-    total['subprocess_counts'] = np.sum([s["subprocess_counts"] for s in stats_list], axis=0)
-    total['segment_class_counts'] = np.sum([s["segment_class_counts"] for s in stats_list], axis=0)
-    total['segment_full_class_counts'] = np.sum([s["segment_full_class_counts"] for s in stats_list], axis=0)
-
-    # Final result
-    result = {
-        "x": compute_mean_std(total["x"]),
-        "conditions": compute_mean_std(total["conditions"]),
-        "regression": compute_mean_std(total["regression"]),
-        "input_num": compute_mean_std(total["input_num"]),
-        "class_counts": total["class_counts"],
-        "class_balance": compute_classification_balance(total["class_counts"]),
-        "subprocess_counts": total["subprocess_counts"],
-        "subprocess_balance": compute_classification_balance(total["subprocess_counts"]),
-
-        "segment_class_counts": total["segment_class_counts"],
-        "segment_class_balance": compute_classification_balance(total["segment_class_counts"]),
-        "segment_full_class_counts": total["segment_full_class_counts"],
-        "segment_full_class_balance": compute_classification_balance(total["segment_full_class_counts"]),
-        "segment_regression": compute_mean_std(total["segment_regression"]),
-
-        "invisible": compute_mean_std(total["invisible"]),
-    }
-    return result
+def merge_simple_counts(stats_list, key):
+    present = [s[key] for s in stats_list if key in s]
+    if not present:
+        return None
+    return np.sum(present, axis=0)
 
 
 def merge_assignment_masks(list_of_assignment_masks):
@@ -303,102 +230,171 @@ class PostProcessor:
         self.assignment_mask = {p: [] for p in global_config.event_info.process_names}
         self.event_equivalence_classes = global_config.event_info.event_equivalence_classes
 
+        # Feature flags (auto-detected from first .add())
+        self.use_regression = False
+        self.use_classification = False
+        self.use_subprocess = False
+        self.use_assignment = False
+        self.use_segmentation = False
+        self.use_invisible = False
+
+        self._initialized = False
+
     def add(
-            self, x, conditions, regression, num_vectors, class_counts, subprocess_counts, invisible,
-            segment_class_counts,segment_full_class_counts, segment_regression,
-            event_weight=None
+            self,
+            x,
+            conditions,
+            num_vectors,
+            regression=None,
+            class_counts=None,
+            subprocess_counts=None,
+            invisible=None,
+            segment_class_counts=None,
+            segment_full_class_counts=None,
+            segment_regression=None,
     ):
-        x_stats = masked_stats(x.reshape(-1, x.shape[-1]), None)
-        cond_stats = masked_stats(conditions, None)
-        regression_stats = masked_stats(regression, None)
-        num_vectors_stats = masked_stats(num_vectors, None)
-        segment_regression_stats = masked_stats(segment_regression, None)
 
-        if invisible.size == 0:
-            reshaped = np.empty((0, invisible.shape[-1]))  # safe manual reshape
-        else:
-            reshaped = invisible.reshape(-1, invisible.shape[-1])
-        invisible_stats = masked_stats(reshaped,  None)
+        # ---- Required keys ----
+        record = {
+            "x": masked_stats(x.reshape(-1, x.shape[-1])),
+            "conditions": masked_stats(conditions),
+            "input_num": masked_stats(num_vectors.reshape(-1, num_vectors.shape[-1])),
+        }
 
-        self.stats.append({
-            "x": x_stats,
-            "conditions": cond_stats,
-            "regression": regression_stats,
-            "input_num": num_vectors_stats,
-            "class_counts": class_counts,
-            "subprocess_counts": subprocess_counts,
-            "segment_class_counts": segment_class_counts,
-            "segment_full_class_counts": segment_full_class_counts,
-            "segment_regression": segment_regression_stats,
+        # ---- Auto-detect optional components ----
+        if not self._initialized:
+            self.use_regression = regression is not None
+            self.use_classification = class_counts is not None
+            self.use_assignment = subprocess_counts is not None
+            self.use_segmentation = segment_class_counts is not None
+            self.use_invisible = invisible is not None
+            self._initialized = True
 
-            "invisible": invisible_stats,
-        })
+        # ---- Optional: regression ----
+        if self.use_regression and regression is not None:
+            record["regression"] = masked_stats(regression)
+
+        # ---- Optional: classification ----
+        if self.use_classification and class_counts is not None:
+            record["class_counts"] = class_counts
+
+        # ---- Optional: assignment ----
+        if self.use_assignment and subprocess_counts is not None:
+            record["subprocess_counts"] = subprocess_counts
+
+        # ---- Optional: invisible ----
+        if self.use_invisible and invisible is not None:
+            inv = invisible.reshape(-1, invisible.shape[-1])
+            record["invisible"] = masked_stats(inv)
+
+        # ---- Optional: segmentation ----
+        if self.use_segmentation and segment_class_counts is not None:
+            record["segment_class_counts"] = segment_class_counts
+            record["segment_full_class_counts"] = segment_full_class_counts
+            record["segment_regression"] = masked_stats(segment_regression)
+
+        self.stats.append(record)
 
     def add_assignment_mask(self, process, dict_particle):
         self.assignment_mask[process].append(dict_particle)
 
     @classmethod
-    def merge(
-            cls,
-            instances,
-            regression_names,
-            saved_results_path=None,
-    ):
-        # Filter out None instances, when a run dir does not contain any data
-        # for the desired physics processes
-        valid_instances = [inst for inst in instances if inst is not None]
-        combined = [item for a in valid_instances for item in a.stats]
-        merged_stats = merge_stats(combined)
+    def merge(cls, instances, regression_names=None, saved_results_path=None):
 
-        all_assignment_masks = [inst.assignment_mask for inst in valid_instances]
-        merged_assignment_masks = merge_assignment_masks(all_assignment_masks)
-        particle_balance = compute_particle_balance(merged_assignment_masks, instances[0].event_equivalence_classes)
+        instances = [i for i in instances if i is not None]
+        stats_list = [s for inst in instances for s in inst.stats]
+        first = instances[0]
 
-        saved_results = {
-            'input_mean': {
-                'Source': torch.tensor(merged_stats["x"]["mean"], dtype=torch.float32),
-                'Conditions': torch.tensor(merged_stats["conditions"]["mean"], dtype=torch.float32),
-            },
-            'input_std': {
-                'Source': torch.tensor(merged_stats["x"]["std"], dtype=torch.float32),
-                'Conditions': torch.tensor(merged_stats["conditions"]["std"], dtype=torch.float32),
-            },
-            'input_num_mean': {
-                'Source': torch.tensor(merged_stats["input_num"]["mean"], dtype=torch.float32)
-            },
-            'input_num_std': {
-                'Source': torch.tensor(merged_stats["input_num"]["std"], dtype=torch.float32)
-            },
-            'regression_mean': {
-                k: torch.tensor(merged_stats["regression"]["mean"][i], dtype=torch.float32)
-                for i, k in enumerate(regression_names)
-            },
-            'regression_std': {
-                k: torch.tensor(merged_stats["regression"]["std"][i], dtype=torch.float32)
-                for i, k in enumerate(regression_names)
-            },
-            'class_counts': torch.tensor(merged_stats["class_counts"], dtype=torch.float32),
-            'class_balance': torch.tensor(merged_stats["class_balance"], dtype=torch.float32),
-            'particle_balance': particle_balance,
-            'subprocess_counts': torch.tensor(merged_stats["subprocess_counts"], dtype=torch.float32),
-            'subprocess_balance': torch.tensor(merged_stats["subprocess_balance"], dtype=torch.float32),
+        merged = {}
 
-            'segment_class_counts': torch.tensor(merged_stats["segment_class_counts"], dtype=torch.float32),
-            'segment_class_balance': torch.tensor(merged_stats["segment_class_balance"], dtype=torch.float32),
+        # ---- Required stats ----
+        merged["x"] = merge_stat_maps(stats_list, "x")
+        merged["conditions"] = merge_stat_maps(stats_list, "conditions")
+        merged["input_num"] = merge_stat_maps(stats_list, "input_num")
 
-            'segment_full_class_counts': torch.tensor(merged_stats["segment_full_class_counts"], dtype=torch.float32),
-            'segment_full_class_balance': torch.tensor(merged_stats["segment_full_class_balance"], dtype=torch.float32),
+        # ---- Optional stats ----
+        if first.use_regression:
+            merged["regression"] = merge_stat_maps(stats_list, "regression")
 
-            'segment_regression_mean': torch.tensor(merged_stats["segment_regression"]["mean"], dtype=torch.float32),
-            'segment_regression_std': torch.tensor(merged_stats["segment_regression"]["std"], dtype=torch.float32),
+        if first.use_classification:
+            merged["class_counts"] = merge_simple_counts(stats_list, "class_counts")
+            merged["class_balance"] = compute_classification_balance(merged["class_counts"])
 
-            'invisible_mean': {
-                'Source': torch.tensor(merged_stats["invisible"]["mean"], dtype=torch.float32),
+        if first.use_invisible:
+            merged["invisible"] = merge_stat_maps(stats_list, "invisible")
+
+        if first.use_segmentation:
+            merged["segment_class_counts"] = merge_simple_counts(stats_list, "segment_class_counts")
+            merged["segment_full_class_counts"] = merge_simple_counts(stats_list, "segment_full_class_counts")
+            merged["segment_regression"] = merge_stat_maps(stats_list, "segment_regression")
+
+            merged["segment_class_balance"] = compute_classification_balance(
+                merged["segment_class_counts"]
+            )
+            merged["segment_full_class_balance"] = compute_classification_balance(
+                merged["segment_full_class_counts"]
+            )
+
+        if first.use_assignment:
+            merged["subprocess_counts"] = merge_simple_counts(stats_list, "subprocess_counts")
+            merged["subprocess_balance"] = compute_classification_balance(merged["subprocess_counts"])
+
+            all_masks = [inst.assignment_mask for inst in instances]
+            # You keep your own merge + particle_balance implementation
+            merged_masks = merge_assignment_masks(all_masks)
+            particle_balance = compute_particle_balance(
+                merged_masks,
+                first.event_equivalence_classes
+            )
+            merged["particle_balance"] = particle_balance
+
+        ########################################################
+        # Final output – only include keys that exist
+        ########################################################
+        output: dict[str, Tensor | dict[str, Tensor]] = {
+            "input_mean": {
+                "Source": torch.tensor(merged["x"]["mean"], dtype=torch.float32),
+                "Conditions": torch.tensor(merged["conditions"]["mean"], dtype=torch.float32)
             },
-            'invisible_std': {
-                'Source': torch.tensor(merged_stats["invisible"]["std"], dtype=torch.float32),
+            "input_std": {
+                "Source": torch.tensor(merged["x"]["std"], dtype=torch.float32),
+                "Conditions": torch.tensor(merged["conditions"]["std"], dtype=torch.float32)
             },
+            "input_num_mean": {"Source": torch.tensor(merged["input_num"]["mean"], dtype=torch.float32)},
+            "input_num_std": {"Source": torch.tensor(merged["input_num"]["std"], dtype=torch.float32)},
         }
 
+        if first.use_regression:
+            output["regression_mean"] = {
+                name: torch.tensor(merged["regression"]["mean"][i]) for i, name in enumerate(regression_names)
+            }
+            output["regression_std"] = {
+                name: torch.tensor(merged["regression"]["std"][i]) for i, name in enumerate(regression_names)
+            }
+
+        if first.use_classification:
+            output["class_counts"] = torch.tensor(merged["class_counts"])
+            output["class_balance"] = torch.tensor(merged["class_balance"])
+
+        if first.use_assignment:
+            output["subprocess_counts"] = torch.tensor(merged["subprocess_counts"])
+            output["subprocess_balance"] = torch.tensor(merged["subprocess_balance"])
+            output["particle_balance"] = merged["particle_balance"]
+
+        if first.use_segmentation:
+            output["segment_class_counts"] = torch.tensor(merged["segment_class_counts"])
+            output["segment_class_balance"] = torch.tensor(merged["segment_class_balance"])
+            output["segment_full_class_counts"] = torch.tensor(merged["segment_full_class_counts"])
+            output["segment_full_class_balance"] = torch.tensor(merged["segment_full_class_balance"])
+            output["segment_regression_mean"] = torch.tensor(merged["segment_regression"]["mean"])
+            output["segment_regression_std"] = torch.tensor(merged["segment_regression"]["std"])
+
+        if first.use_invisible:
+            output["invisible_mean"] = {"Source": torch.tensor(merged["invisible"]["mean"])}
+            output["invisible_std"] = {"Source": torch.tensor(merged["invisible"]["std"])}
+
+        # Save
         if saved_results_path:
-            torch.save(saved_results, f"{saved_results_path}/normalization.pt")
+            torch.save(output, f"{saved_results_path}/normalization.pt")
+
+        return output
