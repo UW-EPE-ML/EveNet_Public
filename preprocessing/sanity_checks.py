@@ -2,7 +2,6 @@ import logging
 from dataclasses import dataclass, replace
 from typing import Iterable
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -59,6 +58,8 @@ class InputDictionarySanityChecker:
             ExpectedTensor("assignments-indices", (None, None, None), "Resonance-to-child mapping"),
             ExpectedTensor("assignments-mask", (None, None), "Resonance validity mask"),
             ExpectedTensor("assignments-indices-mask", (None, None, None), "Per-child mask"),
+            ExpectedTensor("subprocess_id", (None,), "Integer subprocess label"),
+            ExpectedTensor("process_names", (None,), "String subprocess label"),
         ),
         "segmentation": (
             ExpectedTensor("segmentation-class", (None, None, None), "One-hot daughter class"),
@@ -121,12 +122,80 @@ class InputDictionarySanityChecker:
             rows.append([task, status, ", ".join(sorted(available)) or "<none>"])
         return rows
 
+    def _validate_process_mappings(self, pdict: dict, event_particles: dict) -> list[list[str]]:
+        if not event_particles:
+            return []
+
+        process_names = pdict.get("process_names")
+        subprocess_ids = pdict.get("subprocess_id")
+        rows: list[list[str]] = []
+
+        ordered_processes = list(event_particles)
+        process_lookup = {name: idx for idx, name in enumerate(ordered_processes)}
+
+        if process_names is not None:
+            normalized_names = [name.decode() if isinstance(name, (bytes, bytearray)) else str(name) for name in
+                                process_names]
+            missing = sorted(set(normalized_names) - set(ordered_processes))
+            if missing:
+                rows.append([
+                    "process_names",
+                    _format_shape(getattr(process_names, "shape", "<no shape>")),
+                    ", ".join(ordered_processes) or "<none>",
+                    f"unknown process names: {', '.join(missing)}",
+                ])
+
+        if process_names is not None and subprocess_ids is not None:
+            normalized_names = [name.decode() if isinstance(name, (bytes, bytearray)) else str(name) for name in
+                                process_names]
+            mismatches: list[int] = []
+            for idx, (name, subprocess) in enumerate(zip(normalized_names, subprocess_ids)):
+                expected = process_lookup.get(name)
+                if expected is None or expected != subprocess:
+                    mismatches.append(idx)
+
+            if mismatches:
+                sample = ", ".join(map(str, mismatches[:3]))
+                note = f"mismatched subprocess_id for {len(mismatches)} events"
+                if len(mismatches) > 3:
+                    note += f" (first indices: {sample})"
+                else:
+                    note += f" (indices: {sample})"
+                rows.append([
+                    "subprocess_id",
+                    _format_shape(getattr(subprocess_ids, "shape", "<no shape>")),
+                    "process order",
+                    note,
+                ])
+
+        if rows:
+            assignment_rows: list[list[str]] = []
+            for idx, (process, particles) in enumerate(event_particles.items()):
+                names = getattr(particles, "names", None)
+                if names is None:
+                    try:
+                        names = list(particles)
+                    except TypeError:
+                        names = []
+                resonance_list = ", ".join(map(str, names)) or "<none>"
+                assignment_rows.append([str(idx), process, resonance_list])
+
+            assignment_table = _render_table(
+                "Expected subprocess mapping",
+                ["Subprocess ID", "Process name", "Resonances"],
+                assignment_rows,
+            )
+            logger.info("\n%s", assignment_table)
+
+        return rows
+
     def _validate_shapes(
-        self,
-        pdict: dict,
-        n_events: int | None,
-        assignment_dims: tuple[int | None, int | None],
-        segmentation_dims: tuple[int | None, int | None],
+            self,
+            pdict: dict,
+            n_events: int | None,
+            assignment_dims: tuple[int | None, int | None],
+            segmentation_dims: tuple[int | None, int | None],
+            event_particles: dict,
     ) -> list[list[str]]:
         rows: list[list[str]] = []
         expected_map = {t.name: t for t in self.INPUT_TENSORS}
@@ -190,7 +259,8 @@ class InputDictionarySanityChecker:
                 [
                     name,
                     _format_shape(getattr(arr, "shape", "<no shape>")),
-                    _format_shape(tensor.expected_shape if n_events is None else (n_events,) + tensor.expected_shape[1:]),
+                    _format_shape(
+                        tensor.expected_shape if n_events is None else (n_events,) + tensor.expected_shape[1:]),
                     "; ".join(issues) if issues else "✓",
                 ]
             )
@@ -228,6 +298,8 @@ class InputDictionarySanityChecker:
                     "assignments-mask does not align with assignments-indices",
                 ])
 
+            rows.extend(self._validate_process_mappings(pdict, event_particles))
+
         return rows
 
     def run(self, pdict: dict, global_config=None) -> None:
@@ -259,6 +331,7 @@ class InputDictionarySanityChecker:
             n_events,
             assignment_dims=assignment_dims,
             segmentation_dims=segmentation_dims,
+            event_particles=getattr(getattr(global_config, "event_info", None), "event_particles", {}) or {},
         )
         validation_table = _render_table(
             "Shape validation",
