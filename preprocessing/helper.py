@@ -173,10 +173,6 @@ def process_dict(
     # ==> ASSIGNMENTS
     process_names = global_config.event_info.process_names
     subprocess_counts = None
-    # TODO: need a list of detailed process names of this file
-    # let's fake one for now
-    pdict['process_names'] = np.random.choice(['tttt_2lsc', 'tttt_3l'], size=len(weights))
-    pdict['num_sequential_vectors'] = np.ones(len(weights), dtype=np.int32)
 
     if "assignments-mask" in pdict and len(assignment_keys) > 0:
         subprocess_counts = np.zeros(len(process_names), dtype=np.float32)
