@@ -101,7 +101,7 @@ def process_dict(
     if all(len(arr) == 0 for arr in pdict.values()):
         return shape_metadata
 
-    sanity_checker.run(pdict)
+    sanity_checker.run(pdict, global_config=global_config)
 
     flattened, meta = flatten_dict(pdict)
 
