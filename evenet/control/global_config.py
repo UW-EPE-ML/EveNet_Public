@@ -77,7 +77,7 @@ class Config:
         self.loaded = False
         self.skip_keys = ["event_info", "resonance"]
 
-    def load_yaml(self, path: str | Path):
+    def load_yaml(self, path: str | Path, current_dir: Path = None):
         path = Path(path)
         with open(path, 'r') as f:
             data = yaml.safe_load(f) or {}
@@ -114,6 +114,41 @@ class Config:
 
         if 'process_info' in self._global_config:
             self._global_config['process_info'].pop('EXCLUDE', None)
+
+        # special deal with file paths
+        def resolve_path(d, key):
+            if key not in d or d[key] is None:
+                return
+            raw = Path(d[key]).expanduser()
+            if current_dir is not None:
+                d[key] = (Path(current_dir) / raw).resolve()
+            else:
+                d[key] = raw.resolve()
+
+        # Mapping of dict → list of keys
+        path_fields = {
+            'platform': ['data_parquet_dir', 'data_parquet_val_dir'],
+            'logger': ['save_dir'],
+            'options.Training': [
+                'model_checkpoint_save_path',
+                'model_checkpoint_load_path',
+                'pretrain_model_load_path'
+            ],
+            'options.Dataset': ['normalization_file'],
+        }
+
+        # Helper to walk nested dicts
+        def get_nested(cfg, dotted_key):
+            parts = dotted_key.split('.')
+            for p in parts:
+                cfg = cfg[p]
+            return cfg
+
+        # Apply the resolver
+        for section, keys in path_fields.items():
+            d = get_nested(self._global_config, section)
+            for k in keys:
+                resolve_path(d, k)
 
         self.loaded = True
 

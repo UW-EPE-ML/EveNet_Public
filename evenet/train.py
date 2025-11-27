@@ -31,7 +31,7 @@ def train_func(cfg):
     total_events = cfg['total_events']
     total_val_events = cfg['total_val_events']
     world_rank = ray.train.get_context().get_world_rank()
-    global_config.load_yaml(cfg['global_config_path'])
+    global_config.load_yaml(cfg['global_config_path'], current_dir=cfg['current_dir'])
 
     log_cfg = cfg.get('logger', {})
     loggers = []
@@ -166,7 +166,14 @@ def main(args: argparse.Namespace) -> None:
         }
     }
 
-    global_config.load_yaml(args.config)
+    # Expand ~ and convert to absolute path
+    config_path = os.path.abspath(os.path.expanduser(args.config))
+    # Check existence
+    if not os.path.isfile(config_path):
+        raise FileNotFoundError(f"Config file does not exist: {config_path}")
+
+    # Load your config
+    global_config.load_yaml(config_path)
     global_config.display()
 
     if "logger" not in global_config._global_config:
@@ -213,7 +220,8 @@ def main(args: argparse.Namespace) -> None:
         "total_events": total_events,
         "total_val_events": total_val_events,
         "early_stopping": global_config.options.Training.EarlyStopping,
-        "global_config_path": args.config,
+        "global_config_path": config_path,
+        "current_dir": os.getcwd(),
     }
 
     trainer = TorchTrainer(
