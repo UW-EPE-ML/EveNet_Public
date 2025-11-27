@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
-from pathlib import Path
-import json
+import logging
 
 from evenet.control.global_config import global_config
 from preprocessing.helper import preprocess  # the function we defined
@@ -67,6 +66,11 @@ def parse_args():
 
 def main():
     args = parse_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.DEBUG)
 
     # Load global EveNet config
     global_config.load_yaml(args.config)

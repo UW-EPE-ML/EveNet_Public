@@ -97,10 +97,11 @@ def process_dict(
     Process a single *per-event dictionary* (after splitting or direct loading).
     Update shape metadata, statistics, and append arrow chunk.
     """
-    sanity_checker.run(pdict)
 
     if all(len(arr) == 0 for arr in pdict.values()):
         return shape_metadata
+
+    sanity_checker.run(pdict)
 
     flattened, meta = flatten_dict(pdict)
 
