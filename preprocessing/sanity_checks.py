@@ -1,5 +1,5 @@
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Iterable
 
 
@@ -72,6 +72,38 @@ class InputDictionarySanityChecker:
         lengths = [arr.shape[0] for arr in pdict.values() if hasattr(arr, "shape") and arr.shape]
         return min(lengths) if lengths else None
 
+    def _infer_assignment_dims(self, global_config) -> tuple[int | None, int | None]:
+        if global_config is None:
+            return None, None
+
+        resonance_slots: int | None = None
+        child_slots: int | None = None
+
+        event_particles = getattr(getattr(global_config, "event_info", None), "event_particles", {}) or {}
+        if event_particles:
+            resonance_slots = max((len(particles.names) for particles in event_particles.values()), default=None)
+
+        product_particles = getattr(getattr(global_config, "event_info", None), "product_particles", {}) or {}
+        if product_particles:
+            child_slots = max(
+                (len(particle.names) for particles in product_particles.values() for particle in particles.values()),
+                default=None,
+            )
+
+        return resonance_slots, child_slots
+
+    def _infer_segmentation_dims(self, global_config) -> tuple[int | None, int | None]:
+        resonance_slots, child_slots = self._infer_assignment_dims(global_config)
+
+        max_children = child_slots + 1 if child_slots is not None else None
+        segmentation_tags = None
+
+        segmentation_indices = getattr(getattr(global_config, "event_info", None), "segmentation_indices", None)
+        if segmentation_indices is not None:
+            segmentation_tags = len(segmentation_indices)
+
+        return max_children, segmentation_tags
+
     def _collect_key_rows(self, pdict: dict) -> list[list[str]]:
         rows: list[list[str]] = []
         for key in sorted(pdict):
@@ -89,11 +121,51 @@ class InputDictionarySanityChecker:
             rows.append([task, status, ", ".join(sorted(available)) or "<none>"])
         return rows
 
-    def _validate_shapes(self, pdict: dict, n_events: int | None) -> list[list[str]]:
+    def _validate_shapes(
+        self,
+        pdict: dict,
+        n_events: int | None,
+        assignment_dims: tuple[int | None, int | None],
+        segmentation_dims: tuple[int | None, int | None],
+    ) -> list[list[str]]:
         rows: list[list[str]] = []
         expected_map = {t.name: t for t in self.INPUT_TENSORS}
         for tensors in self.TASK_TENSORS.values():
             expected_map.update({t.name: t for t in tensors})
+
+        resonance_slots, child_slots = assignment_dims
+        if resonance_slots is not None and child_slots is not None:
+            expected_map["assignments-indices"] = replace(
+                expected_map["assignments-indices"],
+                expected_shape=(None, resonance_slots, child_slots),
+            )
+            expected_map["assignments-indices-mask"] = replace(
+                expected_map["assignments-indices-mask"],
+                expected_shape=(None, resonance_slots, child_slots),
+            )
+            expected_map["assignments-mask"] = replace(
+                expected_map["assignments-mask"],
+                expected_shape=(None, resonance_slots),
+            )
+
+        seg_children, seg_resonances = segmentation_dims
+        if seg_children is not None and seg_resonances is not None:
+            expected_map["segmentation-class"] = replace(
+                expected_map["segmentation-class"],
+                expected_shape=(None, seg_children, seg_resonances),
+            )
+            expected_map["segmentation-data"] = replace(
+                expected_map["segmentation-data"],
+                expected_shape=(None, seg_children, 18),
+            )
+            expected_map["segmentation-momentum"] = replace(
+                expected_map["segmentation-momentum"],
+                expected_shape=(None, seg_children, 4),
+            )
+            expected_map["segmentation-full-class"] = replace(
+                expected_map["segmentation-full-class"],
+                expected_shape=(None, seg_children, seg_resonances),
+            )
 
         for name, tensor in expected_map.items():
             if name not in pdict:
@@ -158,12 +230,14 @@ class InputDictionarySanityChecker:
 
         return rows
 
-    def run(self, pdict: dict) -> None:
+    def run(self, pdict: dict, global_config=None) -> None:
         if not pdict:
             logger.warning("Received empty dictionary for preprocessing.")
             return
 
         n_events = self._infer_event_count(pdict)
+        assignment_dims = self._infer_assignment_dims(global_config)
+        segmentation_dims = self._infer_segmentation_dims(global_config)
         logger.info("Sanity check: inferred %s events from leading dimensions.", n_events or "<unknown>")
 
         key_table = _render_table(
@@ -180,7 +254,12 @@ class InputDictionarySanityChecker:
         )
         logger.info("\n%s", task_table)
 
-        validation_rows = self._validate_shapes(pdict, n_events)
+        validation_rows = self._validate_shapes(
+            pdict,
+            n_events,
+            assignment_dims=assignment_dims,
+            segmentation_dims=segmentation_dims,
+        )
         validation_table = _render_table(
             "Shape validation",
             ["Key", "Actual", "Expected", "Notes"],

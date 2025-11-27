@@ -92,11 +92,11 @@ additional tensors beyond the standard inputs are required.
 
 ### Resonance Assignment Head
 
-| Key                        | Shape       | Meaning                                                                                                                                                                                                                                                 |
-|----------------------------|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `assignments-indices`      | `(N, R, D)` | Resonance-to-child mapping. `R` is the number of resonances you describe in the YAML (56 in the example) and `D` is the maximum number of children a resonance may have (3 in the example). Each entry stores indices drawn from the sequential inputs. |
-| `assignments-mask`         | `(N, R)`    | Indicates whether **all** children for a given resonance were reconstructed.                                                                                                                                                                            |
-| `assignments-indices-mask` | `(N, R, D)` | Per-child validity flags. Use `0` to pad absent daughters while keeping other children active.                                                                                                                                                          |
+| Key                        | Shape       | Meaning                                                                                                                                                                                                      |
+|----------------------------|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `assignments-indices`      | `(N, R, D)` | Resonance-to-child mapping. `R` is the number of resonances in the event (e.g., `len(global_config.event_info.event_particles[proc].names)`), and `D` is the maximum number of children over all resonances (scan `global_config.event_info.product_particles[proc][resonance].names`). Each entry stores indices drawn from the sequential inputs. |
+| `assignments-mask`         | `(N, R)`    | Indicates whether **all** children for a given resonance were reconstructed.                                                                                                                                 |
+| `assignments-indices-mask` | `(N, R, D)` | Per-child validity flags. Use `0` to pad absent daughters while keeping other children active.                                                                                                               |
 
 > 📐 **Assignment internals:** During conversion EveNet scans your assignment map to determine `R` and `D`, initialises
 > arrays filled with `-1`, and then writes the actual child indices along with boolean masks. The snippet below mirrors
@@ -111,12 +111,12 @@ index_mask = np.zeros((num_events, n_targets, max_daughters), dtype=bool)
 
 ### Segmentation Head
 
-| Key                       | Shape        | Meaning                                                                                                                                                         |
-|---------------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `segmentation-class`      | `(N, S, T)`  | One-hot daughter class per slot. `S` is the maximum number of segments per event (4 in the example) and `T` is the number of resonance tags (9 in the example). |
-| `segmentation-data`       | `(N, S, 18)` | Assignment of each daughter slot to one of the 18 input particles used in the point cloud.                                                                      |
-| `segmentation-momentum`   | `(N, S, 4)`  | Ground-truth four-momenta for the segmented daughters.                                                                                                          |
-| `segmentation-full-class` | `(N, S, T)`  | Boolean indicator: `1` if all daughters of the resonance are reconstructed.                                                                                     |
+| Key                       | Shape        | Meaning                                                                                                                          |
+|---------------------------|--------------|----------------------------------------------------------------------------------------------------------------------------------|
+| `segmentation-class`      | `(N, S, T)`  | One-hot daughter class per slot. `S` is the maximum number of daughters across resonances **plus one** reserved null slot (mirrors `D + 1` from assignments), and `T` is the number of resonance tags (e.g., `len(global_config.event_info.segmentation_indices)`). |
+| `segmentation-data`       | `(N, S, 18)` | Assignment of each daughter slot to one of the 18 input particles used in the point cloud.                                       |
+| `segmentation-momentum`   | `(N, S, 4)`  | Ground-truth four-momenta for the segmented daughters.                                                                           |
+| `segmentation-full-class` | `(N, S, T)`  | Boolean indicator: `1` if all daughters of the resonance are reconstructed.                                                      |
 
 As with assignments, the converter computes `S` and `T` by scanning your segment-tag map. The internal helper creates
 zero-initialised arrays sized `(num_events, max_event_segments, max_segment_tags)` and fills them according to the
