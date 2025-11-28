@@ -33,6 +33,13 @@ ingests and to clarify how each tensor maps onto the model heads.
 3. **Run the EveNet converter.** Point `preprocessing/preprocess.py` at your `.npz` bundle and pass the matching YAML so
    the loader can recover feature names, the number of sequential vectors, and the heads you are enabling. The converter
    assumes both artifacts describe the same structure—mismatches will surface as validation errors.
+
+   Two ingest modes are supported:
+
+   - **Explicit file splits**: provide train/val/test files directly so the converter preserves your boundaries.
+   - **On-the-fly splits**: provide one or more unsplit files and let the converter perform an event-level split using
+     your `--split_ratio`.
+
 4. **Train or evaluate.** Training configs reference the resulting parquet directory via `platform.data_parquet_dir` and
    reuse the same YAML in `options.Dataset.event_info`.
 
@@ -47,7 +54,9 @@ ingests and to clarify how each tensor maps onto the model heads.
 ## 📦 Input Tensor Dictionary
 
 Each event is described by the following feature tensors. Shapes are shown with a leading `N` to indicate the number of
-stored events in a given `.npz` file. Masks share the same leading dimension as the value they gate.
+stored events in a given `.npz` file. Masks share the same leading dimension as the value they gate. During conversion,
+`preprocessing/sanity_checks.py` logs these expectations and will cast dtypes when possible so you can quickly verify the
+layout coming from your pipeline.
 
 | Key                      | Shape        | Description                                                                                                                                                                                                                                                                                                                                                     |
 |--------------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -91,13 +100,25 @@ additional tensors beyond the standard inputs are required.
 
 ### Resonance Assignment Head
 
-| Key                        | Shape       | Meaning                                                                                                                                                                                                        |
-|----------------------------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `assignments-indices`      | `(N, R, D)` | Integer indices mapping each resonance to its reconstructed children. `R` = number of resonances per event; `D` = max number of daughters among all resonances. `-1` for no reconstructed children or padding. |
-| `assignments-mask`         | `(N, R)`    | Boolean mask indicating whether **all** children of each resonance are successfully reconstructed.                                                                                                             |
-| `assignments-indices-mask` | `(N, R, D)` | Per-daughter mask specifying which child indices are valid. `0` indicates padding for missing daughters.                                                                                                       |
-| `subprocess_id`            | `(N,)`      | Integer label of the generating subprocess (Feynman diagram class).                                                                                                                                            |
+#### Index conventions
+- **R = number of resonance targets** per event (largest across your processes)
+- **D = maximum daughters** any resonance can have (padding dimension)
+- Child indices refer to rows in the fixed `x` tensor (18 slots). Use `-1` for padding/null.
+
+#### Target Tensors
+
+| Key                        | Shape       | Meaning                                                                                                                            |
+|----------------------------|-------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `assignments-indices`      | `(N, R, D)` | Integer indices mapping each resonance target to its reconstructed daughters. Fill unused daughter slots with `-1`.                                                    |
+| `assignments-mask`         | `(N, R)`    | Boolean mask indicating whether **all** required daughters for each resonance are successfully reconstructed.                                                           |
+| `assignments-indices-mask` | `(N, R, D)` | Per-daughter mask specifying which child indices are valid. `0` indicates padding for missing daughters.                                                              |
+| `subprocess_id`            | `(N,)`      | Integer label of the generating subprocess (Feynman diagram class).                                                                                                    |
 | `process_names`            | `(N,)`      | String label of each subprocess. Must match the ordering in `event_info.yaml` and align with `subprocess_id`. Used only in preprocessing and producing `normalization.pt`.                                     |
+
+#### Quick Summary
+- R = resonance targets, D = padded daughters
+- Children index into the 18×7 `x` slots; `-1` = padding
+- `assignments-mask` expects **all** daughters present; per-daughter gaps use `assignments-indices-mask`
 
 > 📐 **Assignment internals:** During conversion EveNet scans your assignment map to determine `R` and `D`, initialises
 > arrays filled with `-1`, and then writes the actual child indices along with boolean masks. The snippet below mirrors
@@ -170,24 +191,38 @@ the `.npz` dictionary in sync so the converter knows how many channels to expect
 
 1. **Assemble events** into Python lists and save them with `numpy.savez` (or `savez_compressed`). Each key listed above
    becomes an array inside the archive.
-2. **Invoke the converter**:
+2. **Invoke the converter** using the new dataloader-friendly CLI. Point to your event-info YAML via `--config` and
+   choose whether you are supplying pre-split files or a combined set that should be split by the tool:
 
    ```bash
+   # Explicit file-level splits
    python preprocessing/preprocess.py \
-     share/event_info/pretrain.yaml \
-     --in_npz /path/to/events.npz \
-     --store_dir /path/to/output \
-     --cpu_max 32
+     --config share/event_info/pretrain.yaml \
+     --train /path/to/train_*.npz \
+     --val   /path/to/val_*.npz \
+     --test  /path/to/test_*.npz \
+     --store_dir /path/to/output
+
+   # Event-level split with ratios (defaults to train only)
+   python preprocessing/preprocess.py \
+     --config share/event_info/pretrain.yaml \
+     --files /path/to/combined_*.npz \
+     --split_ratio 0.8,0.1,0.1 \
+     --store_dir /path/to/output
    ```
+
+   - Use `--file` instead of `--files` when processing a single archive.
+   - Set `-v/--verbose` to see detailed sanity-check output and saved file sizes.
 
    The converter reads the YAML to recover feature names, masks, and head activation flags, then emits:
 
-    - `data_*.parquet` containing flattened tensors.
+    - `train.parquet`, `val.parquet`, and `test.parquet` containing flattened tensors (only for splits with data).
     - `shape_metadata.json` with the original shapes (e.g., `(18, 7)` for `x`).
-    - `normalization.pt` with channel-wise statistics and class weights.
+    - `normalization.pt` with channel-wise statistics and class weights computed from the **training** split.
 
 3. **Inspect the logs.** The script reports how many particles, invisible objects, and resonances were valid across the
-   dataset—helpful when debugging mask alignment.
+   dataset—helpful when debugging mask alignment. Statistics are aggregated only from the training data so validation
+   and test remain untouched.
 
 ---
 
