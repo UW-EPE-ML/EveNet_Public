@@ -10,6 +10,7 @@ class ExpectedTensor:
     name: str
     expected_shape: tuple
     description: str
+    dtype: str | None = None
 
 
 def _format_shape(shape: Iterable[int | None] | str) -> str:
@@ -35,38 +36,49 @@ class InputDictionarySanityChecker:
     """Validate and describe incoming preprocessing dictionaries with rich logging."""
 
     INPUT_TENSORS: tuple[ExpectedTensor, ...] = (
-        ExpectedTensor("num_vectors", (None,), "Total global + sequential objects per event"),
-        ExpectedTensor("num_sequential_vectors", (None,), "Sequential entries per event"),
-        ExpectedTensor("x", (None, 18, 7), "Point-cloud tensor (18 particles × 7 features)"),
-        ExpectedTensor("x_mask", (None, 18), "Mask for point-cloud slots"),
-        ExpectedTensor("conditions", (None, None), "Event-level scalars"),
-        ExpectedTensor("conditions_mask", (None, 1), "Mask for event-level scalars"),
+        ExpectedTensor(
+            "num_vectors", (None,), "Total global + sequential objects per event", "float32"
+        ),
+        ExpectedTensor(
+            "num_sequential_vectors", (None,), "Sequential entries per event", "float32"
+        ),
+        ExpectedTensor("x", (None, 18, 7), "Point-cloud tensor (18 particles × 7 features)", "float32"),
+        ExpectedTensor("x_mask", (None, 18), "Mask for point-cloud slots", "bool"),
+        ExpectedTensor("conditions", (None, None), "Event-level scalars", "float32"),
+        ExpectedTensor("conditions_mask", (None, 1), "Mask for event-level scalars", "bool"),
     )
 
     TASK_TENSORS: dict[str, tuple[ExpectedTensor, ...]] = {
         "classification": (
-            ExpectedTensor("classification", (None,), "Per-event class label"),
-            ExpectedTensor("event_weight", (None,), "Optional event weight"),
+            ExpectedTensor("classification", (None,), "Per-event class label", "float32"),
+            ExpectedTensor("event_weight", (None,), "Optional event weight", "float32"),
         ),
         "truth_generation": (
-            ExpectedTensor("x_invisible", (None, None, None), "Invisible particle features"),
-            ExpectedTensor("x_invisible_mask", (None, None), "Mask for invisible particles"),
-            ExpectedTensor("num_invisible_raw", (None,), "Raw count of invisibles"),
-            ExpectedTensor("num_invisible_valid", (None,), "Valid invisibles after matching"),
+            ExpectedTensor("x_invisible", (None, None, None), "Invisible particle features", "float32"),
+            ExpectedTensor("x_invisible_mask", (None, None), "Mask for invisible particles", "bool"),
+            ExpectedTensor("num_invisible_raw", (None,), "Raw count of invisibles", "float32"),
+            ExpectedTensor("num_invisible_valid", (None,), "Valid invisibles after matching", "float32"),
         ),
         "resonance_assignment": (
-            ExpectedTensor("assignments-indices", (None, None, None), "Resonance-to-child mapping"),
-            ExpectedTensor("assignments-mask", (None, None), "Resonance validity mask"),
-            ExpectedTensor("assignments-indices-mask", (None, None, None), "Per-child mask"),
-            ExpectedTensor("subprocess_id", (None,), "Integer subprocess label"),
-            ExpectedTensor("process_names", (None,), "String subprocess label"),
+            ExpectedTensor(
+                "assignments-indices", (None, None, None), "Resonance-to-child mapping", "float32"
+            ),
+            ExpectedTensor("assignments-mask", (None, None), "Resonance validity mask", "bool"),
+            ExpectedTensor("assignments-indices-mask", (None, None, None), "Per-child mask", "bool"),
+            ExpectedTensor("subprocess_id", (None,), "Integer subprocess label", "float32"),
+            ExpectedTensor("process_names", (None,), "String subprocess label", None),
         ),
         "segmentation": (
-            ExpectedTensor("segmentation-class", (None, None, None), "One-hot daughter class"),
-            ExpectedTensor("segmentation-data", (None, None, 18), "Assignment of daughter slots"),
-            ExpectedTensor("segmentation-momentum", (None, None, 4), "Daughter four-momenta"),
-            ExpectedTensor("segmentation-full-class", (None, None, None), "Complete-daughter indicator"),
+            ExpectedTensor("segmentation-class", (None, None, None), "One-hot daughter class", "float32"),
+            ExpectedTensor("segmentation-data", (None, None, 18), "Assignment of daughter slots", "float32"),
+            ExpectedTensor("segmentation-momentum", (None, None, 4), "Daughter four-momenta", "float32"),
+            ExpectedTensor("segmentation-full-class", (None, None, None), "Complete-daughter indicator", "float32"),
         ),
+    }
+
+    DTYPE_TABLE: dict[str, str | None] = {
+        **{t.name: t.dtype for t in INPUT_TENSORS},
+        **{t.name: t.dtype for tensors in TASK_TENSORS.values() for t in tensors},
     }
 
     def _infer_event_count(self, pdict: dict) -> int | None:
@@ -112,6 +124,40 @@ class InputDictionarySanityChecker:
             shape = getattr(arr, "shape", "<no shape>")
             dtype = getattr(arr, "dtype", "<unknown>")
             rows.append([key, str(shape), str(dtype)])
+        return rows
+
+    def _expected_dtype(self, name: str) -> str | None:
+        return self.DTYPE_TABLE.get(name)
+
+    def _validate_dtypes(self, pdict: dict) -> list[list[str]]:
+        rows: list[list[str]] = []
+        for name, arr in sorted(pdict.items()):
+            expected_dtype = self._expected_dtype(name)
+            if expected_dtype is None:
+                continue
+
+            actual_dtype = getattr(arr, "dtype", None)
+            notes = "✓"
+
+            if actual_dtype is None:
+                notes = "value has no dtype attribute"
+            elif str(actual_dtype) != expected_dtype:
+                notes = f"cast from {actual_dtype}"
+                try:
+                    pdict[name] = arr.astype(expected_dtype)
+                except Exception as exc:  # pragma: no cover - defensive
+                    notes = f"failed cast from {actual_dtype}: {exc}"
+                    logger.warning("Failed to cast %s to %s: %s", name, expected_dtype, exc)
+                else:
+                    logger.warning("Casting %s from %s to %s", name, actual_dtype, expected_dtype)
+
+            rows.append([
+                name,
+                str(actual_dtype) if actual_dtype is not None else "<unknown>",
+                expected_dtype,
+                notes,
+            ])
+
         return rows
 
     def _collect_task_rows(self, pdict: dict) -> list[list[str]]:
@@ -236,6 +282,32 @@ class InputDictionarySanityChecker:
                 expected_shape=(None, seg_children, seg_resonances),
             )
 
+        missing_rows: list[list[str]] = []
+        first_required = self.INPUT_TENSORS[0].name
+        if first_required not in pdict:
+            missing_rows.append([
+                first_required,
+                "<missing>",
+                _format_shape(expected_map[first_required].expected_shape),
+                "missing required tensor",
+            ])
+            logger.warning("Missing required tensor '%s' in preprocessing input.", first_required)
+
+        for task, tensors in self.TASK_TENSORS.items():
+            present = [tensor for tensor in tensors if tensor.name in pdict]
+            if not present:
+                continue
+            for tensor in tensors:
+                if tensor.name in pdict:
+                    continue
+                missing_rows.append([
+                    tensor.name,
+                    "<missing>",
+                    _format_shape(expected_map[tensor.name].expected_shape),
+                    f"{task} task missing required tensor",
+                ])
+                logger.warning("Task '%s' is active but missing tensor '%s'.", task, tensor.name)
+
         for name, tensor in expected_map.items():
             if name not in pdict:
                 continue
@@ -300,7 +372,7 @@ class InputDictionarySanityChecker:
 
             rows.extend(self._validate_process_mappings(pdict, event_particles))
 
-        return rows
+        return missing_rows + rows
 
     def run(self, pdict: dict, global_config=None) -> None:
         if not pdict:
@@ -339,3 +411,11 @@ class InputDictionarySanityChecker:
             validation_rows,
         )
         logger.info("\n%s", validation_table)
+
+        dtype_rows = self._validate_dtypes(pdict)
+        dtype_table = _render_table(
+            "DType validation",
+            ["Key", "DType", "Expected", "Notes"],
+            dtype_rows,
+        )
+        logger.info("\n%s", dtype_table)
