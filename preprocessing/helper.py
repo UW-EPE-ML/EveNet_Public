@@ -102,17 +102,6 @@ def process_dict(
 
     sanity_checker.run(pdict, global_config=global_config)
 
-    flattened, meta = flatten_dict(pdict)
-
-    # --- Metadata consistency ---
-    if shape_metadata is None:
-        shape_metadata = meta
-    else:
-        assert shape_metadata == meta, "Shape metadata mismatch."
-
-    # store table chunk
-    store_chunks.append(flattened)
-
     # --- If no statistics needed (val/test), we are done ---
     if statistics is None:
         return shape_metadata
@@ -222,6 +211,19 @@ def process_dict(
         segment_full_class_counts=seg_full_cnt,
         segment_regression=pdict["segmentation-momentum"] if "segmentation-momentum" in pdict else None,
     )
+
+    pdict.pop("process_names", None)
+
+    flattened, meta = flatten_dict(pdict)
+
+    # --- Metadata consistency ---
+    if shape_metadata is None:
+        shape_metadata = meta
+    else:
+        assert shape_metadata == meta, "Shape metadata mismatch."
+
+    # store table chunk
+    store_chunks.append(flattened)
 
     return shape_metadata
 

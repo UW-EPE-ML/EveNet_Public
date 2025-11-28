@@ -50,29 +50,29 @@ class InputDictionarySanityChecker:
 
     TASK_TENSORS: dict[str, tuple[ExpectedTensor, ...]] = {
         "classification": (
-            ExpectedTensor("classification", (None,), "Per-event class label", "float32"),
+            ExpectedTensor("classification", (None,), "Per-event class label", "int64"),
             ExpectedTensor("event_weight", (None,), "Optional event weight", "float32"),
         ),
         "truth_generation": (
             ExpectedTensor("x_invisible", (None, None, None), "Invisible particle features", "float32"),
             ExpectedTensor("x_invisible_mask", (None, None), "Mask for invisible particles", "bool"),
-            ExpectedTensor("num_invisible_raw", (None,), "Raw count of invisibles", "float32"),
-            ExpectedTensor("num_invisible_valid", (None,), "Valid invisibles after matching", "float32"),
+            ExpectedTensor("num_invisible_raw", (None,), "Raw count of invisibles", "int64"),
+            ExpectedTensor("num_invisible_valid", (None,), "Valid invisibles after matching", "int64"),
         ),
         "resonance_assignment": (
             ExpectedTensor(
-                "assignments-indices", (None, None, None), "Resonance-to-child mapping", "float32"
+                "assignments-indices", (None, None, None), "Resonance-to-child mapping", "int64"
             ),
             ExpectedTensor("assignments-mask", (None, None), "Resonance validity mask", "bool"),
             ExpectedTensor("assignments-indices-mask", (None, None, None), "Per-child mask", "bool"),
-            ExpectedTensor("subprocess_id", (None,), "Integer subprocess label", "float32"),
+            ExpectedTensor("subprocess_id", (None,), "Integer subprocess label", "int64"),
             ExpectedTensor("process_names", (None,), "String subprocess label", None),
         ),
         "segmentation": (
-            ExpectedTensor("segmentation-class", (None, None, None), "One-hot daughter class", "float32"),
-            ExpectedTensor("segmentation-data", (None, None, 18), "Assignment of daughter slots", "float32"),
+            ExpectedTensor("segmentation-class", (None, None, None), "One-hot daughter class", "bool"),
+            ExpectedTensor("segmentation-data", (None, None, 18), "Assignment of daughter slots", "bool"),
             ExpectedTensor("segmentation-momentum", (None, None, 4), "Daughter four-momenta", "float32"),
-            ExpectedTensor("segmentation-full-class", (None, None, None), "Complete-daughter indicator", "float32"),
+            ExpectedTensor("segmentation-full-class", (None, None, None), "Complete-daughter indicator", "bool"),
         ),
     }
 
