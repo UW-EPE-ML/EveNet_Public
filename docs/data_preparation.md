@@ -112,18 +112,29 @@ index_mask = np.zeros((num_events, n_targets, max_daughters), dtype=bool)
 
 ### Segmentation Head
 
-| Key                       | Shape        | Meaning                                                                                                                                                                                                |
-|---------------------------|--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `segmentation-class`      | `(N, S, T)`  | One-hot daughter class per slot. `S` is the maximum number of daughters across resonances **plus one** reserved null slot (mirrors `D + 1` from assignments), and `T` is the number of resonance tags. |
-| `segmentation-data`       | `(N, S, 18)` | Assignment of each daughter slot to one of the 18 input particles used in the point cloud.                                                                                                             |
-| `segmentation-momentum`   | `(N, S, 4)`  | Ground-truth four-momenta for the segmented daughters.                                                                                                                                                 |
-| `segmentation-full-class` | `(N, S, T)`  | Boolean indicator: `1` if all daughters of the resonance are reconstructed.                                                                                                                            |
+#### Index conventions
+- S = max number of resonance instances across all processes + 1 null instance (null at index S−1)
+- Number of resonance tags + 1 null tag (null at index 0)
+- **Tensors are boolean** except momentum.
 
-As with assignments, the converter computes `S` and `T` by scanning your segment-tag map. The internal helper creates
-zero-initialised arrays sized `(num_events, max_event_segments, max_segment_tags)` and fills them according to the
-resonance definitions. Any slots you leave unused remain associated with the catch-all background class (`0`).
+#### Target Tensors
 
-If you disable the segmentation head, you can skip all four tensors.
+| Key                       | Shape      | Description                                                                                   |
+|---------------------------|------------|-----------------------------------------------------------------------------------------------|
+| `segmentation-class`      | (N, S, T)  | One-hot resonance **tag** for each resonance **instance**. Null tag = 0; null instance = S-1. |
+| `segmentation-data`       | (N, S, 18) | Mask assigning input particles (18 dims) to each instance. Null instance = all zeros.         |
+| `segmentation-momentum`   | (N, S, 4)  | True four-momentum (E,px,py,pz) for each instance; null instance = zeros.                     |
+| `segmentation-full-class` | (N, S, T)  | 1 if instance is fully reconstructable for tag `t`; else assigned to null tag.                |
+
+#### Quick Summary
+- S = instances, T = classes
+- Both include a null entry
+- Boolean everywhere except 4-momentum
+- Segmentation maps:
+- instance → tag (`segmentation-class`)
+- instance → particles (`segmentation-data`)
+- instance → true 4-vector (`segmentation-momentum`)
+- instance → fully-reconstructable flag (`segmentation-full-class`)
 
 ### Worked Input Example
 
