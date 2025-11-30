@@ -22,6 +22,23 @@ logger = logging.getLogger(__name__)
 # ======================================================================
 # Utility Helpers
 # ======================================================================
+@dataclass
+class LogScalePlan:
+    sequential_indices: list[int] = field(default_factory=list)
+    sequential_names: list[str] = field(default_factory=list)
+    condition_indices: list[int] = field(default_factory=list)
+    condition_names: list[str] = field(default_factory=list)
+    invisible_indices: list[int] = field(default_factory=list)
+    invisible_names: list[str] = field(default_factory=list)
+
+    def description(self) -> str:
+        sequential = ", ".join(self.sequential_names) if self.sequential_names else "<none>"
+        conditions = ", ".join(self.condition_names) if self.condition_names else "<none>"
+        invisible = ", ".join(self.invisible_names) if self.invisible_names else "<none>"
+        return (
+            f"x → {sequential}; conditions → {conditions}; invisible → {invisible}"
+        )
+
 
 def load_npz(path):
     arr = np.load(path, allow_pickle=True)
@@ -104,24 +121,6 @@ def apply_log_scaling(pdict: dict, plan: LogScalePlan) -> dict:
         )
 
     return pdict
-
-
-@dataclass
-class LogScalePlan:
-    sequential_indices: list[int] = field(default_factory=list)
-    sequential_names: list[str] = field(default_factory=list)
-    condition_indices: list[int] = field(default_factory=list)
-    condition_names: list[str] = field(default_factory=list)
-    invisible_indices: list[int] = field(default_factory=list)
-    invisible_names: list[str] = field(default_factory=list)
-
-    def description(self) -> str:
-        sequential = ", ".join(self.sequential_names) if self.sequential_names else "<none>"
-        conditions = ", ".join(self.condition_names) if self.condition_names else "<none>"
-        invisible = ", ".join(self.invisible_names) if self.invisible_names else "<none>"
-        return (
-            f"x → {sequential}; conditions → {conditions}; invisible → {invisible}"
-        )
 
 
 def event_split_indices(n_events, ratio, rng=None):
