@@ -23,6 +23,50 @@ logger = logging.getLogger(__name__)
 # Utility Helpers
 # ======================================================================
 
+@dataclass
+class LogScalePlan:
+    sequential_indices: list[int] = field(default_factory=list)
+    sequential_names: list[str] = field(default_factory=list)
+    condition_indices: list[int] = field(default_factory=list)
+    condition_names: list[str] = field(default_factory=list)
+    invisible_indices: list[int] = field(default_factory=list)
+    invisible_names: list[str] = field(default_factory=list)
+
+    def description(self) -> str:
+        rows = [
+            (
+                "x",
+                ", ".join(self.sequential_names) if self.sequential_names else "<none>",
+            ),
+            (
+                "conditions",
+                ", ".join(self.condition_names) if self.condition_names else "<none>",
+            ),
+            (
+                "x_invisible",
+                ", ".join(self.invisible_names) if self.invisible_names else "<none>",
+            ),
+        ]
+
+        header = ("Input", "Features (log1p)")
+        column_widths = [
+            max(len(header[0]), *(len(row[0]) for row in rows)),
+            max(len(header[1]), *(len(row[1]) for row in rows)),
+        ]
+
+        def _format_row(left: str, right: str) -> str:
+            return f"{left.ljust(column_widths[0])} | {right}"
+
+        formatted = [
+            "\n",
+            _format_row(*header),
+            "-" * column_widths[0] + "-+-" + "-" * column_widths[1],
+            *(_format_row(*row) for row in rows),
+        ]
+
+        return "\n".join(formatted)
+
+
 def load_npz(path):
     arr = np.load(path, allow_pickle=True)
     return {k: arr[k] for k in arr.files}
@@ -104,49 +148,6 @@ def apply_log_scaling(pdict: dict, plan: LogScalePlan) -> dict:
         )
 
     return pdict
-
-
-@dataclass
-class LogScalePlan:
-    sequential_indices: list[int] = field(default_factory=list)
-    sequential_names: list[str] = field(default_factory=list)
-    condition_indices: list[int] = field(default_factory=list)
-    condition_names: list[str] = field(default_factory=list)
-    invisible_indices: list[int] = field(default_factory=list)
-    invisible_names: list[str] = field(default_factory=list)
-
-    def description(self) -> str:
-        rows = [
-            (
-                "x",
-                ", ".join(self.sequential_names) if self.sequential_names else "<none>",
-            ),
-            (
-                "conditions",
-                ", ".join(self.condition_names) if self.condition_names else "<none>",
-            ),
-            (
-                "x_invisible",
-                ", ".join(self.invisible_names) if self.invisible_names else "<none>",
-            ),
-        ]
-
-        header = ("Input", "Features (log1p)")
-        column_widths = [
-            max(len(header[0]), *(len(row[0]) for row in rows)),
-            max(len(header[1]), *(len(row[1]) for row in rows)),
-        ]
-
-        def _format_row(left: str, right: str) -> str:
-            return f"{left.ljust(column_widths[0])} | {right}"
-
-        formatted = [
-            _format_row(*header),
-            "-" * column_widths[0] + "-+-" + "-" * column_widths[1],
-            *(_format_row(*row) for row in rows),
-        ]
-
-        return "\n".join(formatted)
 
 
 def event_split_indices(n_events, ratio, rng=None):
