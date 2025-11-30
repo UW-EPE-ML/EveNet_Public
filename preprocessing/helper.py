@@ -1,5 +1,6 @@
 import json
 import logging
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -8,6 +9,7 @@ import pyarrow.parquet as pq
 
 from evenet.dataset.preprocess import flatten_dict
 from evenet.dataset.postprocess import PostProcessor
+from evenet.dataset.types import InputType
 from preprocessing.sanity_checks import InputDictionarySanityChecker
 
 # ======================================================================
@@ -32,6 +34,94 @@ def ensure_list(x):
     if isinstance(x, (list, tuple)):
         return list(x)
     return [x]
+
+
+def build_log_scale_plan(global_config) -> LogScalePlan:
+    plan = LogScalePlan()
+    event_info = global_config.event_info
+
+    seq_offset = 0
+    cond_offset = 0
+
+    for input_name, features in event_info.input_features.items():
+        input_type = str(event_info.input_types[input_name]).upper()
+
+        if input_type == InputType.Sequential.value:
+            for idx, feature in enumerate(features):
+                if feature.log_scale:
+                    plan.sequential_indices.append(seq_offset + idx)
+                    plan.sequential_names.append(f"{input_name}:{feature.name}")
+            seq_offset += len(features)
+
+        elif input_type == InputType.Global.value:
+            for idx, feature in enumerate(features):
+                if feature.log_scale:
+                    plan.condition_indices.append(cond_offset + idx)
+                    plan.condition_names.append(f"{input_name}:{feature.name}")
+            cond_offset += len(features)
+
+    for idx, feature in enumerate(event_info.invisible_input_features):
+        if feature.log_scale:
+            plan.invisible_indices.append(idx)
+            plan.invisible_names.append(f"Invisible:{feature.name}")
+
+    return plan
+
+
+def _validate_log_values(values: np.ndarray, column_name: str):
+    if not np.isfinite(values).all():
+        invalid_count = np.count_nonzero(~np.isfinite(values))
+        raise ValueError(
+            f"Found {invalid_count} non-finite values in {column_name} before log scaling"
+        )
+
+    if (values < 0).any():
+        min_value = values.min()
+        raise ValueError(
+            f"Negative values detected in {column_name} before log scaling (min={min_value})"
+        )
+
+
+def apply_log_scaling(pdict: dict, plan: LogScalePlan) -> dict:
+    def _apply(arr: np.ndarray, indices: list[int], names: list[str], key: str) -> np.ndarray:
+        for idx, name in zip(indices, names):
+            values = arr[..., idx]
+            _validate_log_values(values, f"{key}:{name}")
+            arr[..., idx] = np.log1p(values).astype(arr.dtype, copy=False)
+        return arr
+
+    if plan.sequential_indices and "x" in pdict:
+        pdict["x"] = _apply(pdict["x"], plan.sequential_indices, plan.sequential_names, "x")
+
+    if plan.condition_indices and "conditions" in pdict:
+        pdict["conditions"] = _apply(
+            pdict["conditions"], plan.condition_indices, plan.condition_names, "conditions"
+        )
+
+    if plan.invisible_indices and "x_invisible" in pdict:
+        pdict["x_invisible"] = _apply(
+            pdict["x_invisible"], plan.invisible_indices, plan.invisible_names, "x_invisible"
+        )
+
+    return pdict
+
+
+@dataclass
+class LogScalePlan:
+    sequential_indices: list[int] = field(default_factory=list)
+    sequential_names: list[str] = field(default_factory=list)
+    condition_indices: list[int] = field(default_factory=list)
+    condition_names: list[str] = field(default_factory=list)
+    invisible_indices: list[int] = field(default_factory=list)
+    invisible_names: list[str] = field(default_factory=list)
+
+    def description(self) -> str:
+        sequential = ", ".join(self.sequential_names) if self.sequential_names else "<none>"
+        conditions = ", ".join(self.condition_names) if self.condition_names else "<none>"
+        invisible = ", ".join(self.invisible_names) if self.invisible_names else "<none>"
+        return (
+            f"x → {sequential}; conditions → {conditions}; invisible → {invisible}"
+        )
 
 
 def event_split_indices(n_events, ratio, rng=None):
@@ -88,6 +178,7 @@ def process_dict(
         global_config,
         unique_process_ids,
         assignment_keys,
+        log_scale_plan,
         statistics,
         shape_metadata,
         store_chunks,
@@ -99,6 +190,8 @@ def process_dict(
 
     if all(len(arr) == 0 for arr in pdict.values()):
         return shape_metadata
+
+    pdict = apply_log_scaling(pdict, log_scale_plan)
 
     sanity_checker.run(pdict, global_config=global_config)
 
@@ -269,6 +362,9 @@ def preprocess(
     # Train statistics only
     train_stats = PostProcessor(global_config)
 
+    log_scale_plan = build_log_scale_plan(global_config)
+    logger.info("Applying np.log1p to log-scale features: %s", log_scale_plan.description())
+
     # ==================================================================
     # Case 1: explicit file-level splits
     # ==================================================================
@@ -282,6 +378,7 @@ def preprocess(
                 global_config=global_config,
                 unique_process_ids=unique_process_ids,
                 assignment_keys=assignment_keys,
+                log_scale_plan=log_scale_plan,
                 statistics=train_stats,
                 shape_metadata=shape_metadata,
                 store_chunks=tables["train"],
@@ -296,6 +393,7 @@ def preprocess(
                 global_config=global_config,
                 unique_process_ids=unique_process_ids,
                 assignment_keys=assignment_keys,
+                log_scale_plan=log_scale_plan,
                 statistics=None,
                 shape_metadata=shape_metadata,
                 store_chunks=tables["val"],
@@ -310,6 +408,7 @@ def preprocess(
                 global_config=global_config,
                 unique_process_ids=unique_process_ids,
                 assignment_keys=assignment_keys,
+                log_scale_plan=log_scale_plan,
                 statistics=None,
                 shape_metadata=shape_metadata,
                 store_chunks=tables["test"],
@@ -342,6 +441,7 @@ def preprocess(
                     global_config=global_config,
                     unique_process_ids=unique_process_ids,
                     assignment_keys=assignment_keys,
+                    log_scale_plan=log_scale_plan,
                     statistics=train_stats if split_name == "train" else None,
                     shape_metadata=shape_metadata,
                     store_chunks=tables[split_name],
