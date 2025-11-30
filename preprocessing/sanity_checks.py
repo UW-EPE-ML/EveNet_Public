@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass, replace
-from typing import Iterable
+from typing import Any, Iterable
 
 import numpy as np
 
@@ -424,19 +424,33 @@ class InputDictionarySanityChecker:
 
         invalid_values = self._detect_invalid_values(pdict)
         if invalid_values:
-            for name, stats in invalid_values:
+            for issue in invalid_values:
                 logger.error(
-                    "Invalid values detected in '%s': %s", name, stats
+                    "Invalid values detected in '%s': %s",
+                    issue["name"],
+                    issue["note"],
                 )
+                if issue["event_rows"]:
+                    event_table = _render_table(
+                        f"Invalid entries for {issue['name']}",
+                        [
+                            "Event index",
+                            "Invalid count",
+                            "Sample positions (offset from event)",
+                        ],
+                        issue["event_rows"],
+                    )
+                    logger.error("\n%s", event_table)
+
             summary = "; ".join(
-                f"{name} has {stats}" for name, stats in invalid_values
+                f"{issue['name']} has {issue['note']}" for issue in invalid_values
             )
             raise ValueError(
                 "Preprocessing aborted due to non-finite values: " + summary
             )
 
-    def _detect_invalid_values(self, pdict: dict) -> list[tuple[str, str]]:
-        issues: list[tuple[str, str]] = []
+    def _detect_invalid_values(self, pdict: dict) -> list[dict[str, Any]]:
+        issues: list[dict[str, Any]] = []
         for name, arr in pdict.items():
             if not hasattr(arr, "dtype"):
                 continue
@@ -460,6 +474,40 @@ class InputDictionarySanityChecker:
                 f"{invalid_count}/{total_count} entries are NaN/Inf"
                 f" (sample indices: {samples or '<scalar>'})"
             )
-            issues.append((name, note))
+
+            issues.append(
+                {
+                    "name": name,
+                    "note": note,
+                    "event_rows": self._summarize_invalid_events(invalid_mask),
+                }
+            )
 
         return issues
+
+    def _summarize_invalid_events(
+        self,
+        invalid_mask: np.ndarray,
+        max_events: int = 10,
+        samples_per_event: int = 3,
+    ) -> list[list[str]]:
+        if invalid_mask.ndim == 0:
+            return [["<scalar>", "1", "<scalar>"]]
+
+        coordinates = np.argwhere(invalid_mask)
+        if coordinates.size == 0:
+            return []
+
+        event_indices, counts = np.unique(coordinates[:, 0], return_counts=True)
+        rows: list[list[str]] = []
+        for event_idx, count in zip(event_indices[:max_events], counts[:max_events]):
+            event_coords = coordinates[coordinates[:, 0] == event_idx][:samples_per_event]
+            samples = ", ".join(
+                "<scalar>"
+                if coord.size <= 1
+                else str(tuple(int(v) for v in coord[1:]))
+                for coord in event_coords
+            )
+            rows.append([str(int(event_idx)), str(int(count)), samples or "<scalar>"])
+
+        return rows
