@@ -43,9 +43,10 @@ ingests and to clarify how each tensor maps onto the model heads.
 4. **Train or evaluate.** Training configs reference the resulting parquet directory via `platform.data_parquet_dir` and
    reuse the same YAML in `options.Dataset.event_info`.
 
-> ✨ **Normalization note.** The `normalize`, `log_normalize`, and `none` tags in the YAML are metadata only. EveNet
-> derives channel-wise statistics during conversion. The sole special case is `normalize_uniform`, which reserves a
-> transformation for circular variables (`φ`); the model automatically maps to and from the wrapped representation.
+> ✨ **Normalization note.** Features marked `log_normalize` in the YAML are converted with `np.log1p` during
+> preprocessing (converter logs the affected columns). Values must be finite and non-negative or the run will fail so
+> you can fix the upstream pipeline. Other tags (`normalize`, `none`) remain metadata only, while `normalize_uniform`
+> still denotes the wrapped representation for circular variables (`φ`).
 
 ---
 
