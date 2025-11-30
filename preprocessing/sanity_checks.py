@@ -436,7 +436,7 @@ class InputDictionarySanityChecker:
                         [
                             "Event index",
                             "Invalid count",
-                            "Sample positions (offset from event)",
+                            "Sample positions",
                         ],
                         issue["event_rows"],
                     )
