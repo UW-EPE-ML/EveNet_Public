@@ -2,6 +2,8 @@ import logging
 from dataclasses import dataclass, replace
 from typing import Iterable
 
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
 
@@ -419,3 +421,45 @@ class InputDictionarySanityChecker:
             dtype_rows,
         )
         logger.info("\n%s", dtype_table)
+
+        invalid_values = self._detect_invalid_values(pdict)
+        if invalid_values:
+            for name, stats in invalid_values:
+                logger.error(
+                    "Invalid values detected in '%s': %s", name, stats
+                )
+            summary = "; ".join(
+                f"{name} has {stats}" for name, stats in invalid_values
+            )
+            raise ValueError(
+                "Preprocessing aborted due to non-finite values: " + summary
+            )
+
+    def _detect_invalid_values(self, pdict: dict) -> list[tuple[str, str]]:
+        issues: list[tuple[str, str]] = []
+        for name, arr in pdict.items():
+            if not hasattr(arr, "dtype"):
+                continue
+            if arr.dtype.kind not in {"f", "c"}:
+                continue
+
+            invalid_mask = ~np.isfinite(arr)
+            if not np.any(invalid_mask):
+                continue
+
+            invalid_count = int(np.count_nonzero(invalid_mask))
+            total_count = int(arr.size)
+            sample_indices = np.argwhere(invalid_mask)
+            samples = ", ".join(
+                map(lambda idx: str(tuple(idx)), sample_indices[:3])
+            )
+            if len(sample_indices) > 3:
+                samples += "..."
+
+            note = (
+                f"{invalid_count}/{total_count} entries are NaN/Inf"
+                f" (sample indices: {samples or '<scalar>'})"
+            )
+            issues.append((name, note))
+
+        return issues
