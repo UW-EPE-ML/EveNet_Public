@@ -58,6 +58,7 @@ def compute_head_weights_per_process(product_mappings, pairing_topology) -> dict
         process_to_head_weights[process] = weights
     return process_to_head_weights
 
+
 def compute_segment_tags(product_mappings, pairing_topology, resonance_info) -> dict[str, dict[str, float]]:
     process_to_segment_tags = {}
     for process, particles in product_mappings.items():
@@ -65,7 +66,9 @@ def compute_segment_tags(product_mappings, pairing_topology, resonance_info) -> 
         for resonance_name, child_map in particles.items():
             topology_key = build_topology_key(resonance_name, child_map)
             if topology_key in pairing_topology:
-                process_to_segment_tags[process][resonance_name] = resonance_info[pairing_topology[topology_key]["pairing_topology_category"]][topology_key].get('segment_tag', 0)
+                process_to_segment_tags[process][resonance_name] = \
+                resonance_info[pairing_topology[topology_key]["pairing_topology_category"]][topology_key].get(
+                    'segment_tag', 0)
             # else:
             #     print(f"[warn] '{topology_key}' not found in pairing_topology")
     return process_to_segment_tags
@@ -112,7 +115,7 @@ class EventInfo:
         self.process_names = list(self.event_particles.keys())
         self.resonance_info = resonance_info
         self.resonance_particle_properties = resonance_particle_properties
-        self.segmentation_indices = []# 0: null class
+        self.segmentation_indices = []  # 0: null class
         for decay_mode in self.resonance_info:
             for decay_channel in self.resonance_info[decay_mode]:
                 if 'segment_tag' in self.resonance_info[decay_mode][decay_channel]:
@@ -322,7 +325,11 @@ class EventInfo:
         self.process_to_segment_tags: dict[str, dict[str, float]] = compute_segment_tags(
             self.product_mappings, self.pairing_topology, self.resonance_info
         )
-        self.total_segment_tags = max(v for _, tags in self.process_to_segment_tags.items() for v in tags.values()) + 1
+        if self.process_to_segment_tags:
+            self.total_segment_tags = max(
+                v for _, tags in self.process_to_segment_tags.items() for v in tags.values()) + 1
+        else:
+            self.total_segment_tags = 0
         self.segment_label = {
             label: clsnum for clsnum, label in enumerate(resonance_label[0])
         } if len(resonance_label) > 0 else {}
@@ -540,7 +547,6 @@ class EventInfo:
         # -------------------------------
         segmentations = key_with_default(config, SpecialKey.Segmentations, default={})
 
-
         # Extract Regression Information.
         # -------------------------------
         regressions = key_with_default(config, SpecialKey.Regressions, default={})
@@ -561,7 +567,7 @@ class EventInfo:
         classifications = feynman_fill(classifications, event_particles, product_particles, constructor=list)
 
         class_label = key_with_default(config, SpecialKey.ClassLabel, default={})
-        resonance_label = key_with_default(config, "RESONANCE_LABEL", default = [])
+        resonance_label = key_with_default(config, "RESONANCE_LABEL", default=[])
 
         generations = key_with_default(config, SpecialKey.Generations, default={})
 
