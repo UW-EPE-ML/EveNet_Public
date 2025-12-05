@@ -99,7 +99,6 @@ class Config:
                 else:
                     self._global_config[section] = content
 
-
         required = self.skip_keys
         missing = [key for key in required if key not in self._global_config]
         if missing:
@@ -146,6 +145,9 @@ class Config:
 
         # Apply the resolver
         for section, keys in path_fields.items():
+            if section not in self._global_config:
+                continue
+
             d = get_nested(self._global_config, section)
             for k in keys:
                 resolve_path(d, k)
