@@ -361,12 +361,31 @@ def loss_single_process(
     if process_weight[0] is not None:
         particle_balance_weight *= process_weight[0].unsqueeze(0)
 
+    targets_mask_finite = torch.stack(targets_mask).float()
+    if not torch.isfinite(symmetric_losses).all():
+        RED = "\033[91m"
+        RESET = "\033[0m"
+        is_finite = torch.isfinite(symmetric_losses)
+        num_total = symmetric_losses.numel()
+        num_bad = (~is_finite).sum().item()
+        ratio = num_bad / num_total * 100 if num_total > 0 else 0.0
+
+        print("\n\n" + RED + "=" * 80)
+        print(f" ⚠️  *** WARNING: Non-finite values detected in log_probability! *** ")
+        print("     All inf / -inf entries are being set to 0. ")
+        print("     This indicates that you are doing without vetoing double assignment! ")
+        print(f"     Affected values: {num_bad} / {num_total}  ({ratio:.2f}%), shape: {symmetric_losses.shape}, {targets_mask_finite.shape}")
+        print("=" * 80 + RESET + "\n\n")
+
+        symmetric_losses = torch.nan_to_num(symmetric_losses, nan=0.0, posinf=0.0, neginf=0.0)
+        targets_mask_finite *= is_finite.float()
+
     if event_weight is not None:
-        assignment_loss = symmetric_losses * event_weight.unsqueeze(0) * particle_balance_weight * torch.stack(targets_mask).float()
-        valid_assignments = torch.sum(torch.stack(targets_mask).float() * event_weight.unsqueeze(0) * particle_balance_weight)
+        assignment_loss = symmetric_losses * event_weight.unsqueeze(0) * particle_balance_weight * targets_mask_finite
+        valid_assignments = torch.sum(targets_mask_finite * event_weight.unsqueeze(0) * particle_balance_weight)
     else:
-        assignment_loss = symmetric_losses * particle_balance_weight * torch.stack(targets_mask).float()
-        valid_assignments = torch.sum(torch.stack(targets_mask).float() * particle_balance_weight)
+        assignment_loss = symmetric_losses * particle_balance_weight * targets_mask_finite
+        valid_assignments = torch.sum(targets_mask_finite * particle_balance_weight)
 
     if valid_assignments > 0:
         assignment_loss = torch.sum(assignment_loss) / valid_assignments.clamp(min=1e-6)  # TODO: Check balance and masking
