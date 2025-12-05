@@ -131,8 +131,14 @@ def main(args: argparse.Namespace) -> None:
         }
     }
 
-    global_config.load_yaml(args.config)
-    global_config.display()
+    # Expand ~ and convert to absolute path
+    config_path = os.path.abspath(os.path.expanduser(args.config))
+    # Check existence
+    if not os.path.isfile(config_path):
+        raise FileNotFoundError(f"Config file does not exist: {config_path}")
+
+    # Load your config
+    global_config.load_yaml(config_path)
 
     ray.init(runtime_env=runtime_env)
     platform_info = global_config.platform
@@ -151,7 +157,7 @@ def main(args: argparse.Namespace) -> None:
             "prefetch_batches": platform_info.prefetch_batches,
             "total_events": predict_count,
             "current_dir": os.getcwd(),
-            "global_config_path": args.config,
+            "global_config_path": config_path,
         },
         scaling_config=ScalingConfig(
             num_workers=platform_info.number_of_workers,
