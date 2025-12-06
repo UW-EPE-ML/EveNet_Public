@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Model Architecture - EveNet Documentation Portal</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Model Architecture";
+        var mkdocs_page_input_path = "model_architecture.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script>
+   
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> EveNet Documentation Portal
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting Started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../data_preparation/">Data Preparation</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Model Architecture</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#signal-flow-at-a-glance">🔁 Signal Flow at a Glance</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#input-normalization">🧴 Input Normalization</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#shared-body">🧱 Shared Body</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#global-embedding">🌐 Global Embedding</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#pet-body">🧲 PET Body</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#object-encoder">🧵 Object Encoder</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#task-heads">🎯 Task Heads</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#discriminative-heads">🔍 Discriminative Heads</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#classification">🏷️ Classification</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#regression">📈 Regression</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#assignment">🔗 Assignment</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#segmentation">🌈 Segmentation</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#generative-heads">🌬️ Generative Heads</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#progressive-training-hooks">🌀 Progressive Training Hooks</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#customizing-the-network">🛠️ Customizing the Network</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../train/">Training</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../configuration/">Configuration Reference</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../preprocess_internal_only/">Internal Notes</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">EveNet Documentation Portal</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Model Architecture</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/UW-EPE-ML/EveNet_Public/edit/master/docs/model_architecture.md">Edit on EveNet_Public</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="model-architecture-tour">🧠 Model Architecture Tour<a class="headerlink" href="#model-architecture-tour" title="Permanent link">&para;</a></h1>
+<p>Take a guided walk through EveNet’s multitask architecture—from input normalization to the specialized heads. Pair this with the <a href="../configuration/">configuration guide</a> to see how YAML choices shape each component.</p>
+<ul>
+<li><a href="#signal-flow">Signal flow at a glance</a></li>
+<li><a href="#input-normalization">Input normalization</a></li>
+<li><a href="#shared-body">Shared body</a></li>
+<li><a href="#task-heads">Task heads</a></li>
+<li><a href="#progressive-training">Progressive training hooks</a></li>
+<li><a href="#customizing">Customizing the network</a></li>
+</ul>
+<hr />
+<p><a id="signal-flow"></a></p>
+<h2 id="signal-flow-at-a-glance">🔁 Signal Flow at a Glance<a class="headerlink" href="#signal-flow-at-a-glance" title="Permanent link">&para;</a></h2>
+<p><img alt="" src="../network_summary.png" /></p>
+<p>Inputs are split into point-cloud tensors and global per-event features. Explicit supervision arrives through the target nodes shown on the right, while the reconstruction head trains against the noisy point-cloud inputs it perturbs. Each module in the flow is instantiated inside <a href="../evenet/network/evenet_model.py"><code>evenet/network/evenet_model.py</code></a> using the options loaded from your YAML files. The optional global-diffusion network is configured separately and conditions on the same normalized scalars.</p>
+<hr />
+<p><a id="input-normalization"></a></p>
+<h2 id="input-normalization">🧴 Input Normalization<a class="headerlink" href="#input-normalization" title="Permanent link">&para;</a></h2>
+<p>When <code>EveNetModel</code> is built, it grabs feature statistics from <code>normalization.pt</code> plus schema details from <code>event_info</code> and constructs a collection of <code>Normalizer</code> layers:</p>
+<ul>
+<li><strong>Sequential features</strong> (<code>INPUTS/Source</code>) use a <code>Normalizer</code> that understands mixed discrete/continuous distributions and optional inverse-CDF indices.</li>
+<li><strong>Global features</strong> (<code>INPUTS/Conditions</code>) map through a second <code>Normalizer</code> sized to the event-level vector.</li>
+<li><strong>Multiplicity channels</strong> (<code>num_vectors</code>, <code>num_sequential_vectors</code>) are normalized when generation heads are active.</li>
+<li><strong>Invisible particle targets</strong> reuse the sequential embedding width and are padded to <code>max_neutrinos</code> so diffusion heads can operate consistently whenever truth-level supervision is available.</li>
+</ul>
+<p>Implementation details live near the top of <a href="../evenet/network/evenet_model.py#L1-L120"><code>evenet/network/evenet_model.py</code></a>.</p>
+<hr />
+<p><a id="shared-body"></a></p>
+<h2 id="shared-body">🧱 Shared Body<a class="headerlink" href="#shared-body" title="Permanent link">&para;</a></h2>
+<h3 id="global-embedding">🌐 Global Embedding<a class="headerlink" href="#global-embedding" title="Permanent link">&para;</a></h3>
+<p><code>GlobalVectorEmbedding</code> converts the condition vector into learned tokens. Hyperparameters like depth, hidden dimension, dropout, and activation come from the <code>Body.GlobalEmbedding</code> block described in the <a href="../configuration/#network-templates">configuration reference</a>.</p>
+<h3 id="pet-body">🧲 PET Body<a class="headerlink" href="#pet-body" title="Permanent link">&para;</a></h3>
+<p><code>PETBody</code> processes the sequential particle cloud with transformer-style layers, local neighborhood attention, and optional stochastic feature dropping. Configure <code>num_layers</code>, <code>num_heads</code>, <code>feature_drop</code>, and <code>local_point_index</code> under <code>Body.PET</code> in your network block (see <a href="../configuration/#network-templates">configuration reference</a>).</p>
+<h3 id="object-encoder">🧵 Object Encoder<a class="headerlink" href="#object-encoder" title="Permanent link">&para;</a></h3>
+<p>Outputs from the PET body and global tokens meet in the <code>ObjectEncoder</code>, which mixes information across objects. Attention depth, head counts, positional embedding size, and skip connections are controlled by <code>Body.ObjectEncoder</code> (see <a href="../configuration/#network-templates">configuration reference</a>).</p>
+<hr />
+<p><a id="task-heads"></a></p>
+<h2 id="task-heads">🎯 Task Heads<a class="headerlink" href="#task-heads" title="Permanent link">&para;</a></h2>
+<p>Heads are instantiated only when <code>options.Training.Components.&lt;Head&gt;.include</code> is <code>true</code>. EveNet groups them into discriminative predictors that score events and objects, and generative heads that either reconstruct their own inputs or learn diffusion processes against explicit supervision.</p>
+<h3 id="discriminative-heads">🔍 Discriminative Heads<a class="headerlink" href="#discriminative-heads" title="Permanent link">&para;</a></h3>
+<h4 id="classification">🏷️ Classification<a class="headerlink" href="#classification" title="Permanent link">&para;</a></h4>
+<p>Predicts process probabilities using <code>ClassificationHead</code>. Configure layer counts, hidden size, dropout, and optional attention under <code>Classification</code> in the network YAML (see <a href="../configuration/#network-templates">configuration reference</a>).</p>
+<h4 id="regression">📈 Regression<a class="headerlink" href="#regression" title="Permanent link">&para;</a></h4>
+<p><code>RegressionHead</code> regresses continuous targets (momenta, masses). Normalization tensors (<code>regression_mean</code>, <code>regression_std</code>) are injected so outputs can be de-standardized. Hyperparameters mirror the classification head (see <a href="../configuration/#network-templates">configuration reference</a>).</p>
+<h4 id="assignment">🔗 Assignment<a class="headerlink" href="#assignment" title="Permanent link">&para;</a></h4>
+<p><code>SharedAssignmentHead</code> tackles combinatorial matching between reconstructed objects and truth daughters defined in <code>event_info</code>. It leverages symmetry-aware attention and optional detection layers. Tune <code>feature_drop</code>, attention heads, and decoder depth via the <code>Assignment</code> block (see <a href="../configuration/#network-templates">configuration reference</a>).</p>
+<h4 id="segmentation">🌈 Segmentation<a class="headerlink" href="#segmentation" title="Permanent link">&para;</a></h4>
+<p><code>SegmentationHead</code> predicts binary masks for resonance-specific particle groups. Configure the number of queries, transformer layers, and projection widths in the <code>Segmentation</code> block (see <a href="../configuration/#network-templates">configuration reference</a>).</p>
+<h3 id="generative-heads">🌬️ Generative Heads<a class="headerlink" href="#generative-heads" title="Permanent link">&para;</a></h3>
+<p>Two sibling diffusion heads branch off from the shared body, each with a distinct training objective, plus an optional standalone module for scalar generation:</p>
+<table>
+<thead>
+<tr>
+<th>Head</th>
+<th>Objective type</th>
+<th>Input features</th>
+<th>Supervision</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ReconGeneration</code></td>
+<td>Self-supervised reconstruction</td>
+<td>PET embeddings + global tokens before the object encoder.</td>
+<td>No external targets—the head denoises the noisy visible point-cloud channels it perturbs.</td>
+<td>Shares the PET backbone directly so reconstruction quality reflects the sequential encoder capacity. Configure under <code>ReconGeneration</code>.</td>
+</tr>
+<tr>
+<td><code>TruthGeneration</code></td>
+<td>Supervised generation</td>
+<td>PET embeddings + global tokens with optional invisible padding.</td>
+<td>Padded invisible particle features (e.g., neutrinos) supplied in the dataset.</td>
+<td>Mirrors the reconstruction architecture but learns to sample toward truth-level targets. Settings sit under <code>TruthGeneration</code>.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>💡 <code>GlobalGeneration</code> remains available as an <strong>independent</strong> diffusion network for event-level scalars. It conditions on the normalized global tokens but does not connect through the PET/ObjectEncoder stack, so you can enable or disable it without affecting the primary generative heads.</p>
+</blockquote>
+<hr />
+<p><a id="progressive-training"></a></p>
+<h2 id="progressive-training-hooks">🌀 Progressive Training Hooks<a class="headerlink" href="#progressive-training-hooks" title="Permanent link">&para;</a></h2>
+<p><code>EveNetModel</code> exposes <code>schedule_flags</code> describing which heads are active (diffusion, neutrino, deterministic). The training loop combines these flags with the curriculum defined in <code>options.ProgressiveTraining</code> so that loss weights, dropout, EMA decay, or teacher-forcing gradually adjust across stages. Inspect the scheduling logic in <a href="../evenet/network/evenet_model.py#L352-L380"><code>evenet/network/evenet_model.py</code></a> and pair it with the YAML stages summarized in the <a href="../configuration/#options-deep-dive">configuration reference</a>.</p>
+<hr />
+<p><a id="customizing"></a></p>
+<h2 id="customizing-the-network">🛠️ Customizing the Network<a class="headerlink" href="#customizing-the-network" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Pick a template</strong> – choose a network block described in the <a href="../configuration/#network-templates">configuration reference</a> and copy it into your experiment YAML.</li>
+<li><strong>Override selectively</strong> – in your top-level YAML, override only the fields you want to tweak (e.g., set <code>Body.PET.feature_drop: 0.0</code> for fine-tuning).</li>
+<li><strong>Match supervision</strong> – enable heads under <code>options.Training.Components</code> only when the dataset provides the required targets.</li>
+<li><strong>Refresh normalization</strong> – if you change the input schema in <code>event_info</code>, rerun preprocessing so new statistics land in <code>normalization.pt</code> (see the saving logic in <a href="../preprocessing/postprocessor.py#L360-L406"><code>preprocessing/postprocessor.py</code></a>).</li>
+</ol>
+<p>With these controls, you can resize EveNet for tiny studies or scale it up for production campaigns—all while keeping the codepath consistent.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../data_preparation/" class="btn btn-neutral float-left" title="Data Preparation"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../train/" class="btn btn-neutral float-right" title="Training">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/UW-EPE-ML/EveNet_Public" class="fa fa-code-fork" style="color: #fcfcfc"> EveNet_Public</a>
+        </span>
+    
+    
+      <span><a href="../data_preparation/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../train/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
