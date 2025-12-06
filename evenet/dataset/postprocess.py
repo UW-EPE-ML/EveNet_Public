@@ -258,7 +258,7 @@ class PostProcessor:
         record = {
             "x": masked_stats(x.reshape(-1, x.shape[-1])),
             "conditions": masked_stats(conditions),
-            "input_num": masked_stats(num_vectors.reshape(-1, num_vectors.shape[-1])),
+            "input_num": masked_stats(num_vectors),
         }
 
         # ---- Auto-detect optional components ----
