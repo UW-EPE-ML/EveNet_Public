@@ -222,135 +222,135 @@ def process_dict(
     sanity_checker.run(pdict, global_config=global_config)
 
     # --- If no statistics needed (val/test), we are done ---
-    if statistics is None:
-        return shape_metadata
+    if statistics is not None:
 
-    # --- Compute statistics (train only) ---
-    # ================================================================
-    # EVENT WEIGHTS
-    # ================================================================
-    if "event_weight" in pdict:
-        weights = pdict["event_weight"]
-        weights = weights.astype(np.float32)
-    else:
-        # No weight available → assume all weights = 1
-        # Determine number of events from ANY event-level array
-        # (the ones with first dimension matching events)
-        n_events = None
-        for arr in pdict.values():
-            if hasattr(arr, "shape") and len(arr.shape) > 0:
-                if n_events is None:
-                    n_events = arr.shape[0]
-                else:
-                    n_events = min(n_events, arr.shape[0])
-        if n_events is None:
-            raise RuntimeError("Cannot infer number of events without event_weight or event-level arrays.")
-        weights = np.ones(n_events, dtype=np.float32)
+        # --- Compute statistics (train only) ---
+        # ================================================================
+        # EVENT WEIGHTS
+        # ================================================================
+        if "event_weight" in pdict:
+            weights = pdict["event_weight"]
+            weights = weights.astype(np.float32)
+        else:
+            # No weight available → assume all weights = 1
+            # Determine number of events from ANY event-level array
+            # (the ones with first dimension matching events)
+            n_events = None
+            for arr in pdict.values():
+                if hasattr(arr, "shape") and len(arr.shape) > 0:
+                    if n_events is None:
+                        n_events = arr.shape[0]
+                    else:
+                        n_events = min(n_events, arr.shape[0])
+            if n_events is None:
+                raise RuntimeError("Cannot infer number of events without event_weight or event-level arrays.")
+            weights = np.ones(n_events, dtype=np.float32)
 
-    # Reshape for later multiplication
-    w = weights.reshape(-1, 1)
+        # Reshape for later multiplication
+        w = weights.reshape(-1, 1)
 
-    # ==> CLASSIFICATION
-    if len(unique_process_ids) > 0:
-        class_counts = np.bincount(pdict['classification'], weights=weights)
-        unweighted_class_counts = np.bincount(pdict['classification'])
+        # ==> CLASSIFICATION
+        if len(unique_process_ids) > 0:
+            class_counts = np.bincount(pdict['classification'], weights=weights)
+            unweighted_class_counts = np.bincount(pdict['classification'])
 
-        lines = [
-            "===============================================",
-            " idx | Class          | Weighted Sum | Events ",
-            "==============================================="
-        ]
-        for idx, name in enumerate(unique_process_ids):
-            lines.append(f"{idx:3d} | {name:14s} | {class_counts[idx]:12.3f} | {unweighted_class_counts[idx]:6d}")
-        lines.append("===============================================")
-        table_text = "\n".join(lines)
-        # PRINT ELEGANTLY
-        logger.info("\n%s", table_text)
-    else:
-        class_counts = None  # or np.array([])
-
-    # ==> SEGMENTATION
-    seg_class_cnt = None
-    seg_full_cnt = None
-
-    if "segmentation-class" in pdict:
-        seg_class_cnt = np.sum(
-            np.sum(pdict["segmentation-class"], axis=1) * w,
-            axis=0
-        )
-
-    if "segmentation-full-class" in pdict:
-        seg_full_cnt = np.sum(
-            np.sum(pdict["segmentation-full-class"], axis=1) * w,
-            axis=0
-        )
-
-    # ==> ASSIGNMENTS
-    process_names = global_config.event_info.process_names
-    subprocess_counts = None
-
-    if "assignments-mask" in pdict and len(assignment_keys) > 0:
-        subprocess_counts = np.zeros(len(process_names), dtype=np.float32)
-
-        evt_proc = pdict["process_names"]
-        N = len(evt_proc)
-
-        # loop over each process that appears in the events
-        for i, proc_name in enumerate(process_names):
-            mask = {}
-
-            # select events belonging to this process
-            valid = (evt_proc == proc_name)
-            if not np.any(valid):
-                continue
-
-            subprocess_counts[i] = np.sum(weights[valid])
-
-            # all assignment keys for THIS process, in the order matching columns 0..3
-            proc_keys = [
-                k for k in assignment_keys
-                if f"TARGETS/{proc_name}/" in k or f"LABELS/{proc_name}/" in k
+            lines = [
+                "===============================================",
+                " idx | Class          | Weighted Sum | Events ",
+                "==============================================="
             ]
+            for idx, name in enumerate(unique_process_ids):
+                lines.append(f"{idx:3d} | {name:14s} | {class_counts[idx]:12.3f} | {unweighted_class_counts[idx]:6d}")
+            lines.append("===============================================")
+            table_text = "\n".join(lines)
+            # PRINT ELEGANTLY
+            logger.info("\n%s", table_text)
+        else:
+            class_counts = None  # or np.array([])
 
-            # now local_idx is the column index into assignments_mask
-            for local_idx, key in enumerate(proc_keys):
-                particle = key.split("/")[2]  # "t1", "t2", ...
+        # ==> SEGMENTATION
+        seg_class_cnt = None
+        seg_full_cnt = None
 
-                # lazily allocate full-length vector per particle
-                if particle not in mask:
-                    mask[particle] = np.zeros(N, dtype=np.float32)
+        if "segmentation-class" in pdict:
+            seg_class_cnt = np.sum(
+                np.sum(pdict["segmentation-class"], axis=1) * w,
+                axis=0
+            )
 
-                mask[particle][valid] = (
-                        pdict["assignments-mask"][valid, local_idx] * weights[valid]
-                )
+        if "segmentation-full-class" in pdict:
+            seg_full_cnt = np.sum(
+                np.sum(pdict["segmentation-full-class"], axis=1) * w,
+                axis=0
+            )
 
-            statistics.add_assignment_mask(proc_name, mask)
+        # ==> ASSIGNMENTS
+        process_names = global_config.event_info.process_names
+        subprocess_counts = None
 
-    statistics.add(
-        x=pdict['x'],
-        conditions=pdict['conditions'],
-        num_vectors=pdict['num_sequential_vectors'],
-        regression=pdict['regression-data'] if "regression-data" in pdict else None,
-        class_counts=class_counts,
-        subprocess_counts=subprocess_counts,
-        invisible=pdict['x_invisible'] if "x_invisible" in pdict else None,
-        segment_class_counts=seg_class_cnt,
-        segment_full_class_counts=seg_full_cnt,
-        segment_regression=pdict["segmentation-momentum"] if "segmentation-momentum" in pdict else None,
-    )
+        if "assignments-mask" in pdict and len(assignment_keys) > 0:
+            subprocess_counts = np.zeros(len(process_names), dtype=np.float32)
 
-    pdict.pop("process_names", None)
+            evt_proc = pdict["process_names"]
+            N = len(evt_proc)
+
+            # loop over each process that appears in the events
+            for i, proc_name in enumerate(process_names):
+                mask = {}
+
+                # select events belonging to this process
+                valid = (evt_proc == proc_name)
+                if not np.any(valid):
+                    continue
+
+                subprocess_counts[i] = np.sum(weights[valid])
+
+                # all assignment keys for THIS process, in the order matching columns 0..3
+                proc_keys = [
+                    k for k in assignment_keys
+                    if f"TARGETS/{proc_name}/" in k or f"LABELS/{proc_name}/" in k
+                ]
+
+                # now local_idx is the column index into assignments_mask
+                for local_idx, key in enumerate(proc_keys):
+                    particle = key.split("/")[2]  # "t1", "t2", ...
+
+                    # lazily allocate full-length vector per particle
+                    if particle not in mask:
+                        mask[particle] = np.zeros(N, dtype=np.float32)
+
+                    mask[particle][valid] = (
+                            pdict["assignments-mask"][valid, local_idx] * weights[valid]
+                    )
+
+                statistics.add_assignment_mask(proc_name, mask)
+
+        statistics.add(
+            x=pdict['x'],
+            conditions=pdict['conditions'],
+            num_vectors=pdict['num_sequential_vectors'],
+            regression=pdict['regression-data'] if "regression-data" in pdict else None,
+            class_counts=class_counts,
+            subprocess_counts=subprocess_counts,
+            invisible=pdict['x_invisible'] if "x_invisible" in pdict else None,
+            segment_class_counts=seg_class_cnt,
+            segment_full_class_counts=seg_full_cnt,
+            segment_regression=pdict["segmentation-momentum"] if "segmentation-momentum" in pdict else None,
+        )
+
+        pdict.pop("process_names", None)
 
     flattened, meta = flatten_dict(pdict)
+    # store table chunk
+    store_chunks.append(flattened)
+    if statistics is None:
+        return shape_metadata
 
     # --- Metadata consistency ---
     if shape_metadata is None:
         shape_metadata = meta
     else:
         assert shape_metadata == meta, "Shape metadata mismatch."
-
-    # store table chunk
-    store_chunks.append(flattened)
 
     return shape_metadata
 
