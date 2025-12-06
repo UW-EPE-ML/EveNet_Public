@@ -143,9 +143,17 @@ class Config:
                 cfg = cfg[p]
             return cfg
 
+        def has_path(cfg, path: str):
+            node = cfg
+            for key in path.split("."):
+                if key not in node:
+                    return False
+                node = node[key]
+            return True
+
         # Apply the resolver
         for section, keys in path_fields.items():
-            if section not in self._global_config:
+            if has_path(self._global_config, section):
                 print(f"==> {section} not in global_config")
                 continue
 
