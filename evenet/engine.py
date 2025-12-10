@@ -83,7 +83,8 @@ class EveNetEngine(L.LightningModule):
         self.pretrain_ckpt_path: str = global_config.options.Training.pretrain_model_load_path
 
         self.num_classes: list[str] = (
-            signal[0] if isinstance((signal := global_config.event_info.class_label.get("EVENT", {}).get("signal")), list)
+            signal[0] if isinstance((signal := global_config.event_info.class_label.get("EVENT", {}).get("signal")),
+                                    list)
             else [1]
         )
 
@@ -119,7 +120,18 @@ class EveNetEngine(L.LightningModule):
 
         self.class_weight = None
         if self.classification_cfg.include:
-            self.class_weight = self.balance_dict["class_balance"]
+            base = list(self.balance_dict["class_balance"])
+            self.class_weight = base
+            # If extra class weights are provided, validate and combine
+            extra = getattr(self.classification_cfg, "class_weight", None)
+            if extra is not None:
+                extra = list(extra)
+                if len(extra) != len(base):
+                    raise ValueError(
+                        f"class_weight must have length {len(base)}, "
+                        f"but got {len(extra)}"
+                    )
+                self.class_weight = [b * e for b, e in zip(base, extra)]
 
         self.assignment_weight = None
         self.subprocess_balance = None
@@ -129,7 +141,9 @@ class EveNetEngine(L.LightningModule):
 
         self.segmentation_cls_balance = None
         if self.segmentation_cfg.include:
-            self.segmentation_cls_balance = self.balance_dict["segment_full_class_balance"] if self.segmentation_cfg.use_full_mask else self.balance_dict["segment_class_balance"]
+            self.segmentation_cls_balance = self.balance_dict[
+                "segment_full_class_balance"] if self.segmentation_cfg.use_full_mask else self.balance_dict[
+                "segment_class_balance"]
 
         self.l.info(f"normalization dicts initialized")
 
