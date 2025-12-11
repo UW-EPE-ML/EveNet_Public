@@ -121,7 +121,7 @@ class EveNetEngine(L.LightningModule):
         self.class_weight = None
         if self.classification_cfg.include:
             base = list(self.balance_dict["class_balance"])
-            self.class_weight = base
+            self.class_weight = self.balance_dict["class_balance"]
             # If extra class weights are provided, validate and combine
             extra = getattr(self.classification_cfg, "class_weight", None)
             if extra is not None:
