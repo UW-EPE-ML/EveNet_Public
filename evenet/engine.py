@@ -131,7 +131,7 @@ class EveNetEngine(L.LightningModule):
                         f"class_weight must have length {len(base)}, "
                         f"but got {len(extra)}"
                     )
-                self.class_weight = [b * e for b, e in zip(base, extra)]
+                self.class_weight = torch.tensor([b * e for b, e in zip(base, extra)], dtype=torch.float32)
 
         self.assignment_weight = None
         self.subprocess_balance = None
