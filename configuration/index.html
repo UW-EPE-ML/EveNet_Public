@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Configuration Reference - EveNet Documentation Portal</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Configuration Reference";
+        var mkdocs_page_input_path = "configuration.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script>
+   
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> EveNet Documentation Portal
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting Started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../data_preparation/">Data Preparation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../model_architecture/">Model Architecture</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../train/">Training</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Configuration Reference</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#loader-basics">🧰 Loader Basics</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#tour-of-sharefinetune-exampleyaml">📄 Tour of share/finetune-example.yaml</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#platform-keys">Platform Keys</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#dataset-block">Dataset Block</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#options-deep-dive">🧩 Options Deep Dive</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#training-settings">Training Settings</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#component-blocks">Component Blocks</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#progressive-training">Progressive Training</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#ema-early-stopping">EMA &amp; Early Stopping</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#network-templates">🏗️ Network Templates</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#physics-metadata">🧬 Physics Metadata</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#event-info">Event Info</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#process-info">Process Info</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#resonance-catalogs">Resonance Catalogs</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#prediction-extras">📦 Prediction Extras</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#creating-a-new-experiment">🆕 Creating a New Experiment</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../preprocess_internal_only/">Internal Notes</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">EveNet Documentation Portal</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Configuration Reference</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/UW-EPE-ML/EveNet_Public/edit/master/docs/configuration.md">Edit on EveNet_Public</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="configuration-reference">⚙️ Configuration Reference<a class="headerlink" href="#configuration-reference" title="Permanent link">&para;</a></h1>
+<p>Welcome to the EveNet control center! This document explains how the YAML examples under <code>share/*-example.yaml</code> fit together, how defaults are merged, and which knobs to tweak for your experiments.</p>
+<ul>
+<li><a href="#loader-basics">Loader basics</a></li>
+<li><a href="#finetune-example">Tour of <code>share/finetune-example.yaml</code></a></li>
+<li><a href="#options-deep-dive">Options deep dive</a></li>
+<li><a href="#network-templates">Network templates</a></li>
+<li><a href="#physics-metadata">Physics metadata</a></li>
+<li><a href="#prediction-notes">Prediction-specific notes</a></li>
+<li><a href="#new-experiment">Creating a new experiment</a></li>
+</ul>
+<hr />
+<p><a id="loader-basics"></a></p>
+<h2 id="loader-basics">🧰 Loader Basics<a class="headerlink" href="#loader-basics" title="Permanent link">&para;</a></h2>
+<p>Top-level scripts expect a single YAML path as their <strong>positional</strong> argument:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>evenet/train.py<span class="w"> </span>share/finetune-example.yaml
+python<span class="w"> </span>evenet/predict.py<span class="w"> </span>share/predict-example.yaml
+</code></pre></div>
+<p>Inside the script, <code>evenet/control/global_config.py</code> handles parsing:</p>
+<ol>
+<li><code>Config.load_yaml(path)</code> reads the YAML file.</li>
+<li>For any section containing a <code>default:</code> key, the loader first reads that template (relative to the YAML file) and then merges inline overrides.</li>
+<li><code>event_info</code> and <code>resonance</code> are combined into an <code>EventInfo</code> instance so downstream code can access schemas, resonance trees, and process metadata by attribute (<code>config.event_info.regression_names</code>, etc.).</li>
+<li>Other sections remain accessible as nested <code>DotDict</code> objects, which means attribute access (e.g., <code>config.options.Training.epochs</code>) works as expected.</li>
+</ol>
+<blockquote>
+<p>🔁 Want to inspect the merged configuration? Call <code>global_config.display()</code> inside a script to print a rich table of overrides versus defaults.</p>
+</blockquote>
+<hr />
+<p><a id="finetune-example"></a></p>
+<h2 id="tour-of-sharefinetune-exampleyaml">📄 Tour of <code>share/finetune-example.yaml</code><a class="headerlink" href="#tour-of-sharefinetune-exampleyaml" title="Permanent link">&para;</a></h2>
+<p>This example highlights the main sections you will encounter:</p>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>What it controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>platform</code></td>
+<td>Ray cluster parameters: worker count, per-worker CPU/GPU resources, batch size, and the <code>data_parquet_dir</code> used to discover shards.</td>
+</tr>
+<tr>
+<td><code>logger</code></td>
+<td>Logging destinations, including Weights &amp; Biases and the optional local logger. Anchors let you reuse names across loggers.</td>
+</tr>
+<tr>
+<td><code>options</code></td>
+<td>Points to <code>options/options.yaml</code> for defaults, then overrides epochs, checkpoints, and component toggles.</td>
+</tr>
+<tr>
+<td><code>Dataset</code></td>
+<td>Dataset-wide overrides like <code>normalization_file</code>, dataset subsampling, and validation split.</td>
+</tr>
+<tr>
+<td><code>network</code></td>
+<td>Which architecture template to load (<code>network/network-20M.yaml</code>, for example) plus any inline tweaks.</td>
+</tr>
+<tr>
+<td><code>event_info</code>, <code>resonance</code></td>
+<td>Canonical particle definitions, resonance trees, and symmetries used during preprocessing and by the model.</td>
+</tr>
+</tbody>
+</table>
+<p>For inference, <code>share/predict-example.yaml</code> mirrors the structure but requires <code>Training.model_checkpoint_load_path</code> and defines an <code>options.prediction</code> block for output writers.</p>
+<h3 id="platform-keys">Platform Keys<a class="headerlink" href="#platform-keys" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>data_parquet_dir</code></td>
+<td>Folder containing <code>data_*.parquet</code> and <code>shape_metadata.json</code>.</td>
+</tr>
+<tr>
+<td><code>number_of_workers</code></td>
+<td>Ray workers to launch. Adjust alongside <code>resources_per_worker</code>.</td>
+</tr>
+<tr>
+<td><code>resources_per_worker</code></td>
+<td>CPU/GPU allocation per worker (e.g., <code>{CPU: 1, GPU: 1}</code>).</td>
+</tr>
+<tr>
+<td><code>batch_size</code>, <code>prefetch_batches</code></td>
+<td>Passed to Ray Data’s <code>iter_torch_batches</code> loader.</td>
+</tr>
+<tr>
+<td><code>use_gpu</code></td>
+<td>Toggle GPU usage for CPU-only runs.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dataset-block">Dataset Block<a class="headerlink" href="#dataset-block" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dataset_limit</code></td>
+<td>Fraction of the shuffled dataset to use (1.0 = full dataset).</td>
+</tr>
+<tr>
+<td><code>normalization_file</code></td>
+<td>Absolute path to <code>normalization.pt</code> from preprocessing.</td>
+</tr>
+<tr>
+<td><code>val_split</code></td>
+<td><code>[start, end]</code> fraction describing the validation window.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><a id="options-deep-dive"></a></p>
+<h2 id="options-deep-dive">🧩 Options Deep Dive<a class="headerlink" href="#options-deep-dive" title="Permanent link">&para;</a></h2>
+<p><code>share/options/options.yaml</code> collects optimizer groups, scheduler defaults, and component toggles. Use the top-level <code>options</code> block in your example file to override any field.</p>
+<h3 id="training-settings">Training Settings<a class="headerlink" href="#training-settings" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>total_epochs</code> / <code>epochs</code></td>
+<td>Planned total vs. epochs executed in the current run.</td>
+</tr>
+<tr>
+<td><code>learning_rate</code>, <code>weight_decay</code></td>
+<td>Shared defaults broadcast to component blocks.</td>
+</tr>
+<tr>
+<td><code>model_checkpoint_save_path</code></td>
+<td>Directory for Lightning checkpoints.</td>
+</tr>
+<tr>
+<td><code>model_checkpoint_load_path</code></td>
+<td>Resume training from this checkpoint (set to <code>null</code> to start fresh).</td>
+</tr>
+<tr>
+<td><code>pretrain_model_load_path</code></td>
+<td>Load weights for fine-tuning without resuming optimizer state.</td>
+</tr>
+<tr>
+<td><code>diffusion_every_n_epochs</code>, <code>diffusion_every_n_steps</code></td>
+<td>Validation cadence for diffusion-based heads.</td>
+</tr>
+<tr>
+<td><code>eval_metrics_every_n_epochs</code></td>
+<td>Controls how often expensive metrics are computed.</td>
+</tr>
+<tr>
+<td><code>apply_event_weight</code></td>
+<td>When <code>true</code>, multiplies losses by per-event weights from preprocessing.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="component-blocks">Component Blocks<a class="headerlink" href="#component-blocks" title="Permanent link">&para;</a></h3>
+<p>Each component inherits optimizer settings and can be toggled independently:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Notable knobs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GlobalEmbedding</code>, <code>PET</code>, <code>ObjectEncoder</code></td>
+<td>Optimizer group, warm-up behavior, layer freezing.</td>
+</tr>
+<tr>
+<td><code>Classification</code>, <code>Regression</code>, <code>Assignment</code>, <code>Segmentation</code></td>
+<td><code>include</code> flags, loss scales, attention/decoder depth, mask usage.</td>
+</tr>
+<tr>
+<td><code>GlobalGeneration</code>, <code>ReconGeneration</code>, <code>TruthGeneration</code></td>
+<td>Diffusion steps, reuse settings, optimizer routing.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="progressive-training">Progressive Training<a class="headerlink" href="#progressive-training" title="Permanent link">&para;</a></h3>
+<p>The <code>ProgressiveTraining</code> section defines staged curricula. Each stage supplies an <code>epoch_ratio</code>, optional <code>transition_ratio</code>, and start/end values for parameters (loss weights, noise probabilities, EMA decay). Modify stages to ramp tasks gradually or disable them for single-stage training.</p>
+<h3 id="ema-early-stopping">EMA &amp; Early Stopping<a class="headerlink" href="#ema-early-stopping" title="Permanent link">&para;</a></h3>
+<p>Within <code>options.Training</code> you will find:</p>
+<ul>
+<li><code>EMA</code> – enable/disable exponential moving averages, set decay, start epoch, and whether to swap EMA weights into the model after loading or at run completion.</li>
+<li><code>EarlyStopping</code> – Lightning-compatible patience, monitored metric, comparison mode, and verbosity.</li>
+</ul>
+<hr />
+<p><a id="network-templates"></a></p>
+<h2 id="network-templates">🏗️ Network Templates<a class="headerlink" href="#network-templates" title="Permanent link">&para;</a></h2>
+<p>Files under <code>share/network/</code> specify architectural hyperparameters for the shared body and task heads. For example, <a href="../share/network/network-20M.yaml"><code>share/network/network-20M.yaml</code></a> defines transformer depth, attention heads, neighborhood sizes, and diffusion dimensions. Override specific fields inside the <code>network</code> section of your top-level YAML to experiment without editing the base template.</p>
+<blockquote>
+<p>🧠 Combine template overrides with component toggles: disable <code>Body.PET.feature_drop</code> during fine-tuning, or shrink head hidden sizes for small datasets.</p>
+</blockquote>
+<hr />
+<p><a id="physics-metadata"></a></p>
+<h2 id="physics-metadata">🧬 Physics Metadata<a class="headerlink" href="#physics-metadata" title="Permanent link">&para;</a></h2>
+<h3 id="event-info">Event Info<a class="headerlink" href="#event-info" title="Permanent link">&para;</a></h3>
+<p><a href="../share/event_info/multi_process.yaml"><code>share/event_info/multi_process.yaml</code></a> describes:</p>
+<ul>
+<li><strong>Inputs</strong> – sequential particle features and global condition vectors, including normalization strategies.</li>
+<li><strong>Resonance topology</strong> – parent/daughter relationships for each process, powering assignments and segmentation targets.</li>
+<li><strong>Regression &amp; segmentation catalogs</strong> – enumerations of momenta and particle groups used by the respective heads.</li>
+</ul>
+<h3 id="process-info">Process Info<a class="headerlink" href="#process-info" title="Permanent link">&para;</a></h3>
+<p><a href="../share/process_info/default.yaml"><code>share/process_info/default.yaml</code></a> captures per-process metadata:</p>
+<ul>
+<li><code>category</code> names for grouping.</li>
+<li><code>process_id</code> integers stored with each event.</li>
+<li><code>diagram</code> entries referencing resonance definitions and symmetry hints.</li>
+<li>Optional <code>rename_to</code> fields for remapping process names during preprocessing.</li>
+</ul>
+<p>Ensure the same event/process files are used in preprocessing <strong>and</strong> training so label ordering stays consistent.</p>
+<h3 id="resonance-catalogs">Resonance Catalogs<a class="headerlink" href="#resonance-catalogs" title="Permanent link">&para;</a></h3>
+<p>Templates under <a href="../share/resonance"><code>share/resonance/</code></a> hold reusable resonance definitions. Reference them from <code>event_info</code> to avoid duplicating decay trees across configs.</p>
+<hr />
+<p><a id="prediction-notes"></a></p>
+<h2 id="prediction-extras">📦 Prediction Extras<a class="headerlink" href="#prediction-extras" title="Permanent link">&para;</a></h2>
+<p><code>share/predict-example.yaml</code> includes an <code>options.prediction</code> block where you can specify the output directory, filename, and any extra tensors to persist. The <code>platform</code> section mirrors training but is often tuned for throughput (e.g., more workers with smaller batch sizes). Always set <code>Training.model_checkpoint_load_path</code> to the checkpoint you want to score.</p>
+<hr />
+<p><a id="new-experiment"></a></p>
+<h2 id="creating-a-new-experiment">🆕 Creating a New Experiment<a class="headerlink" href="#creating-a-new-experiment" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Copy an example</strong> – duplicate <code>share/finetune-example.yaml</code> (or <code>share/predict-example.yaml</code>).</li>
+<li><strong>Update paths</strong> – fill in <code>platform.data_parquet_dir</code>, <code>options.Dataset.normalization_file</code>, and logging/checkpoint directories.</li>
+<li><strong>Toggle components</strong> – adjust <code>options.Training.Components</code> to match the supervision you have.</li>
+<li><strong>Tweak network settings</strong> – override fields in the <code>network</code> section as needed.</li>
+<li><strong>Track metadata</strong> – if you add new processes or features, update the relevant YAMLs under <code>share/event_info/</code> and <code>share/process_info/</code>, then rerun preprocessing so tensors stay aligned.</li>
+</ol>
+<p>Happy experimenting! 🧪</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../train/" class="btn btn-neutral float-left" title="Training"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../preprocess_internal_only/" class="btn btn-neutral float-right" title="Internal Notes">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/UW-EPE-ML/EveNet_Public" class="fa fa-code-fork" style="color: #fcfcfc"> EveNet_Public</a>
+        </span>
+    
+    
+      <span><a href="../train/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../preprocess_internal_only/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

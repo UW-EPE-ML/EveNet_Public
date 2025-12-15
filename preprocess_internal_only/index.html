@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Internal Notes - EveNet Documentation Portal</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Internal Notes";
+        var mkdocs_page_input_path = "preprocess_internal_only.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script>
+   
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> EveNet Documentation Portal
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting Started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../data_preparation/">Data Preparation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../model_architecture/">Model Architecture</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../train/">Training</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../configuration/">Configuration Reference</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Internal Notes</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#folder-structure">📍 Folder Structure</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#what-the-script-does">🛠 What the Script Does</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#run-on-nersc">🚀 Run on NERSC</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#output-files">📤 Output Files</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#notes">⚠️ Notes</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">EveNet Documentation Portal</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Internal Notes</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/UW-EPE-ML/EveNet_Public/edit/master/docs/preprocess_internal_only.md">Edit on EveNet_Public</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="data-preprocessing-for-evenet">🧪 Data Preprocessing for EveNet<a class="headerlink" href="#data-preprocessing-for-evenet" title="Permanent link">&para;</a></h1>
+<p>This preprocessing pipeline prepares structured event-level datasets for EveNet. It merges input .h5 files, flattens structured arrays into 2D pyarrow tables, calculates normalization statistics, and saves outputs as .parquet and .json files ready for model training.</p>
+<h2 id="folder-structure">📍 Folder Structure<a class="headerlink" href="#folder-structure" title="Permanent link">&para;</a></h2>
+<p>The input directory should follow this structure:</p>
+<div class="highlight"><pre><span></span><code>/global/cfs/cdirs/m2616/avencast/Event_Level_Analysis/data/
+├── Run_2.Dec20/
+│   ├── run_1/
+│   │   ├── process_1.h5
+│   │   ├── process_2.h5
+│   ├── run_2/
+│   │   ├── ...
+├── Run_2.Dec21/
+│   ├── run_1/
+│   │   ├── ...
+...
+</code></pre></div>
+<p>Each Run folder (e.g., Run_2.Dec20) contains sub-run folders (run_1, run_2, …), which hold the .h5 files representing different processes.</p>
+<h2 id="what-the-script-does">🛠 What the Script Does<a class="headerlink" href="#what-the-script-does" title="Permanent link">&para;</a></h2>
+<p>For every sub-run folder:  <br />
+1.  Merges all .h5 process files into a single structured data dictionary.<br />
+2.  Converts structured data into a 2D pyarrow Table.<br />
+3.  Saves the output as:<br />
+    - data_<unique_id>.parquet (flattened table)<br />
+    - shape_metadata.json (used for reconstruction)<br />
+4.  Computes normalization statistics (mean, std) across all data.<br />
+5.  Merges statistics from all sub-runs and saves a single .pt normalization file.  </p>
+<h2 id="run-on-nersc">🚀 Run on NERSC<a class="headerlink" href="#run-on-nersc" title="Permanent link">&para;</a></h2>
+<ul>
+<li>
+<p><strong>Paths</strong></p>
+<ul>
+<li><strong>Input root:</strong> <code>/global/cfs/cdirs/m2616/avencast/Event_Level_Analysis/data</code></li>
+<li><strong>Pretrain Run folders:</strong> <code>Run_2.Dec20</code>, <code>Run_2.Dec21</code>, <code>Run_2.Dec22</code></li>
+<li><strong>Output directory:</strong> better to say on <code>$SCRATCH</code> folder</li>
+</ul>
+</li>
+<li>
+<p><strong>Example Command</strong>
+    <div class="highlight"><pre><span></span><code><span class="nv">pretrain_dir</span><span class="o">=</span><span class="s2">&quot;/global/cfs/cdirs/m2616/avencast/Event_Level_Analysis/data&quot;</span>
+<span class="nv">output_dir</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PSCRATCH</span><span class="s2">/Event_Level_Analysis/Pretrain_Parquet/&quot;</span>
+
+python3<span class="w"> </span>preprocessing/preprocess.py<span class="w"> </span>share/preprocess_pretrain.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--c<span class="w"> </span><span class="m">25</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--pretrain_dirs<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="si">${</span><span class="nv">pretrain_dir</span><span class="si">}</span>/Run_2.Dec20<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="si">${</span><span class="nv">pretrain_dir</span><span class="si">}</span>/Run_2.Dec21<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="si">${</span><span class="nv">pretrain_dir</span><span class="si">}</span>/Run_2.Dec22<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="si">${</span><span class="nv">pretrain_dir</span><span class="si">}</span>/Run_2.Pretrain.20250505<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="si">${</span><span class="nv">pretrain_dir</span><span class="si">}</span>/Run_2.Pretrain.20250507<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span><span class="si">${</span><span class="nv">pretrain_dir</span><span class="si">}</span>/Run_3.Pretrain.20250527.Run2Extra<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--store_dir<span class="w"> </span><span class="si">${</span><span class="nv">output_dir</span><span class="si">}</span>/run.20250527.654M<span class="w"> </span><span class="p">|</span><span class="w"> </span>tee<span class="w"> </span><span class="si">${</span><span class="nv">output_dir</span><span class="si">}</span>/run.20250527.654M.log
+
+shifter<span class="w"> </span>python3<span class="w"> </span>preprocessing/preprocess.py<span class="w"> </span>share/preprocess_pretrain.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--c<span class="w"> </span><span class="m">60</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--pretrain_dirs<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="si">${</span><span class="nv">pretrain_dir</span><span class="si">}</span>/Combined_Balanced<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--store_dir<span class="w"> </span><span class="si">${</span><span class="nv">output_dir</span><span class="si">}</span>/run.20250625.2700M
+</code></pre></div></p>
+<p>This command will:
+  - Process all sub-runs in the three Run folders
+  - Generate flattened .parquet files and normalization .pt file
+  - Save logs to run.20250403.log</p>
+</li>
+<li>
+<p><strong>Global Shuffle</strong>
+  <div class="highlight"><pre><span></span><code><span class="w">  </span>python3<span class="w"> </span>NERSC/global_shuffle.py<span class="w"> </span>--first_shuffle_percent<span class="w"> </span><span class="m">1</span>.0<span class="w"> </span>--second_shuffle_percent<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span><span class="m">25</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/pscratch/sd/a/avencast/Event_Level_Analysis/Pretrain_Parquet/run.20250527.654M/
+</code></pre></div></p>
+</li>
+</ul>
+<h2 id="output-files">📤 Output Files<a class="headerlink" href="#output-files" title="Permanent link">&para;</a></h2>
+<p>Under the output directory (<code>--store_dir</code>), the script saves:</p>
+<div class="highlight"><pre><span></span><code>/run.20250403/
+├── data_&lt;timestamp&gt;.parquet       # Flattened input table
+├── shape_metadata.json            # Shape metadata for reconstruction
+├── regression_norm.pt             # Normalization statistics
+└── run.20250403.log               # Optional log if tee is used
+</code></pre></div>
+<h2 id="notes">⚠️ Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>You must supply a valid preprocess_config.yaml (e.g., <code>EveNet/share/preprocess_pretrain.yaml</code>).</li>
+<li>The script will skip any sub-run folder where no valid .h5 files are found or matching fails.</li>
+<li>All normalization is computed globally across all sub-runs and merged at the end.</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../configuration/" class="btn btn-neutral float-left" title="Configuration Reference"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/UW-EPE-ML/EveNet_Public" class="fa fa-code-fork" style="color: #fcfcfc"> EveNet_Public</a>
+        </span>
+    
+    
+      <span><a href="../configuration/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Data Preparation - EveNet Documentation Portal</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Data Preparation";
+        var mkdocs_page_input_path = "data_preparation.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script>
+   
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> EveNet Documentation Portal
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting Started</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Data Preparation</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#config-cli-workflow">🛠️ Config + CLI Workflow</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#input-tensor-dictionary">📦 Input Tensor Dictionary</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#supervision-targets-by-head">🎯 Supervision Targets by Head</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#classification-head">Classification Head</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#truthgeneration-head">TruthGeneration Head</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#recongeneration-head">ReconGeneration Head</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#resonance-assignment-head">Resonance Assignment Head</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#index-conventions">Index conventions</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#target-tensors">Target Tensors</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#quick-summary">Quick Summary</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#segmentation-head">Segmentation Head</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#index-conventions_1">Index conventions</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#target-tensors_1">Target Tensors</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#quick-summary_1">Quick Summary</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#worked-input-example">Worked Input Example</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#npz-parquet-conversion">🔄 NPZ → Parquet Conversion</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#runtime-checklist">✅ Runtime Checklist</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../model_architecture/">Model Architecture</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../train/">Training</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../configuration/">Configuration Reference</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../preprocess_internal_only/">Internal Notes</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">EveNet Documentation Portal</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Data Preparation</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/UW-EPE-ML/EveNet_Public/edit/master/docs/data_preparation.md">Edit on EveNet_Public</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="data-preparation-updated-input-reference">🧪 Data Preparation &amp; Updated Input Reference<a class="headerlink" href="#data-preparation-updated-input-reference" title="Permanent link">&para;</a></h1>
+<p>This page documents the <strong>new preprocessing contract</strong> for EveNet. The reference schema in
+<code>share/event_info/pretrain.yaml</code> is bundled with the repository as an example, but you are free to adapt the feature
+lists to match your campaign. The goal of this guide is to help you build the <code>.npz</code> files that the EveNet converter
+ingests and to clarify how each tensor maps onto the model heads.</p>
+<blockquote>
+<p>⚠️ <strong>Ownership reminder:</strong> Users are responsible for generating the <code>.npz</code> files. EveNet does not reorder or reshape
+features for you—the arrays must already follow the size and ordering implied by your event-info YAML. The converter
+simply validates the layout and writes the parquet outputs. Keep the YAML and the <code>.npz</code> dictionary in sync at all
+times.</p>
+</blockquote>
+<ul>
+<li><a href="#config--cli-workflow">Config + CLI workflow</a></li>
+<li><a href="#input-tensor-dictionary">Input tensor dictionary</a></li>
+<li><a href="#supervision-targets-by-head">Supervision targets by head</a></li>
+<li><a href="#npz--parquet-conversion">NPZ → Parquet conversion</a></li>
+<li><a href="#runtime-checklist">Runtime checklist</a></li>
+</ul>
+<hr />
+<p><a id="config--cli-workflow"></a></p>
+<h2 id="config-cli-workflow">🛠️ Config + CLI Workflow<a class="headerlink" href="#config-cli-workflow" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Start from an event-info YAML.</strong> The repository ships an example at <code>share/event_info/pretrain.yaml</code>; copy or
+   extend it to describe the objects, global variables, and heads you plan to enable. The display names inside the
+   <code>INPUTS</code> block are just labels used for logging and plotting—what matters is the order, which <strong>must</strong> match the
+   tensor layout you write to disk.</li>
+<li><strong>Produce an event dictionary.</strong> For every event, assemble a Python dictionary that satisfies the shapes described
+   below and append it to the archive you will write to disk. When you call <code>numpy.savez</code> (or <code>savez_compressed</code>), each
+   key becomes an array with leading dimension <code>N</code>, the number of events in the file. Masks indicate which padded
+   entries are valid and should contribute to the loss.</li>
+<li><strong>Run the EveNet converter.</strong> Point <code>preprocessing/preprocess.py</code> at your <code>.npz</code> bundle and pass the matching YAML so
+   the loader can recover feature names, the number of sequential vectors, and the heads you are enabling. The converter
+   assumes both artifacts describe the same structure—mismatches will surface as validation errors.</li>
+</ol>
+<p>Two ingest modes are supported:</p>
+<ul>
+<li><strong>Explicit file splits</strong>: provide train/val/test files directly so the converter preserves your boundaries.</li>
+<li>
+<p><strong>On-the-fly splits</strong>: provide one or more unsplit files and let the converter perform an event-level split using
+     your <code>--split_ratio</code>.</p>
+</li>
+<li>
+<p><strong>Train or evaluate.</strong> Training configs reference the resulting parquet directory via <code>platform.data_parquet_dir</code> and
+   reuse the same YAML in <code>options.Dataset.event_info</code>.</p>
+</li>
+</ul>
+<blockquote>
+<p>✨ <strong>Normalization note.</strong> Features marked <code>log_normalize</code> in the YAML are converted with <code>np.log1p</code> during
+preprocessing (converter logs the affected columns). Values must be finite and non-negative or the run will fail so
+you can fix the upstream pipeline. Other tags (<code>normalize</code>, <code>none</code>) remain metadata only, while <code>normalize_uniform</code>
+still denotes the wrapped representation for circular variables (<code>φ</code>).</p>
+</blockquote>
+<hr />
+<p><a id="input-tensor-dictionary"></a></p>
+<h2 id="input-tensor-dictionary">📦 Input Tensor Dictionary<a class="headerlink" href="#input-tensor-dictionary" title="Permanent link">&para;</a></h2>
+<p>Each event is described by the following feature tensors. Shapes are shown with a leading <code>N</code> to indicate the number of
+stored events in a given <code>.npz</code> file. Masks share the same leading dimension as the value they gate. During conversion,
+<code>preprocessing/sanity_checks.py</code> logs these expectations and will cast dtypes when possible so you can quickly verify the
+layout coming from your pipeline.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Shape</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>num_vectors</code></td>
+<td><code>(N,)</code></td>
+<td>Total count of global + sequential objects per event.</td>
+</tr>
+<tr>
+<td><code>num_sequential_vectors</code></td>
+<td><code>(N,)</code></td>
+<td>Number of valid sequential entries per event. Mirrors <code>num_vectors</code> behaviour.</td>
+</tr>
+<tr>
+<td><code>x</code></td>
+<td><code>(N, 18, 7)</code></td>
+<td>Point-cloud tensor storing exactly <strong>18 slots</strong> with <strong>7 features each</strong>. These dimensions are fixed so datasets can leverage the released pretraining weights. Order the features exactly as your YAML lists them (energy, <code>pT</code>, <code>η</code>, <code>φ</code>, b-tag score, lepton flag, charge in the example). Use padding for missing particles and mask them out via <code>x_mask</code>.</td>
+</tr>
+<tr>
+<td><code>x_mask</code></td>
+<td><code>(N, 18)</code></td>
+<td>Boolean (or <code>0/1</code>) mask indicating which particle slots in <code>x</code> correspond to real objects. Only entries with mask <code>1</code> contribute to losses and metrics.</td>
+</tr>
+<tr>
+<td><code>conditions</code></td>
+<td><code>(N, C)</code></td>
+<td>Event-level scalars. <code>C</code> is the number of global variables you define (10 in the example). You may add or remove variables as long as the order matches your YAML; if you do not supply any conditions, drop the key entirely.</td>
+</tr>
+<tr>
+<td><code>conditions_mask</code></td>
+<td><code>(N, 1)</code></td>
+<td>Mask for <code>conditions</code>. Set to <code>1</code> when the global features are present. If you omit <code>conditions</code>, omit this mask as well.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><a id="supervision-targets-by-head"></a></p>
+<h2 id="supervision-targets-by-head">🎯 Supervision Targets by Head<a class="headerlink" href="#supervision-targets-by-head" title="Permanent link">&para;</a></h2>
+<p>Only provide the tensors required for the heads you enable in your training YAML. Omit unused targets or set them to
+empty arrays so the converter skips unnecessary storage.</p>
+<h3 id="classification-head">Classification Head<a class="headerlink" href="#classification-head" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Shape</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>classification</code></td>
+<td><code>(N,)</code></td>
+<td>Process label per event. Combine with <code>event_weight</code> for weighted cross-entropy when sampling imbalanced campaigns.</td>
+</tr>
+<tr>
+<td><code>event_weight</code></td>
+<td><code>(N,)</code></td>
+<td>Optional per-event weight; defaults to <code>1</code> if omitted. Populate it alongside <code>classification</code> so the converter can broadcast the weights into the parquet shards.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="truthgeneration-head">TruthGeneration Head<a class="headerlink" href="#truthgeneration-head" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Shape</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x_invisible</code></td>
+<td><code>(N, N_nu, F_nu)</code></td>
+<td>Invisible particle (e.g., neutrino) features. <code>N_nu</code> is the <strong>maximum</strong> number of invisible objects you intend to pad, <code>2</code> in the example, and <code>F_nu</code> is the number of features per invisible. Feature order is defined in your YAML under the TruthGeneration block.</td>
+</tr>
+<tr>
+<td><code>x_invisible_mask</code></td>
+<td><code>(N, N_nu)</code></td>
+<td>Flags which invisible entries are valid.</td>
+</tr>
+<tr>
+<td><code>num_invisible_raw</code></td>
+<td><code>(N,)</code></td>
+<td>Count of all invisible objects before quality cuts.</td>
+</tr>
+<tr>
+<td><code>num_invisible_valid</code></td>
+<td><code>(N,)</code></td>
+<td>Number of invisible objects associated with reconstructed parents.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="recongeneration-head">ReconGeneration Head<a class="headerlink" href="#recongeneration-head" title="Permanent link">&para;</a></h3>
+<p>ReconGeneration is self-supervised: it perturbs the visible point-cloud channels and learns to denoise them. The target
+specification (which channels to regenerate) lives <strong>directly in the YAML</strong> under the ReconGeneration configuration. No
+additional tensors beyond the standard inputs are required.</p>
+<h3 id="resonance-assignment-head">Resonance Assignment Head<a class="headerlink" href="#resonance-assignment-head" title="Permanent link">&para;</a></h3>
+<h4 id="index-conventions">Index conventions<a class="headerlink" href="#index-conventions" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>R = number of resonance targets</strong> per event (largest across your processes)</li>
+<li><strong>D = maximum daughters</strong> any resonance can have (padding dimension)</li>
+<li>Child indices refer to rows in the fixed <code>x</code> tensor (18 slots). Use <code>-1</code> for padding/null.</li>
+</ul>
+<h4 id="target-tensors">Target Tensors<a class="headerlink" href="#target-tensors" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Shape</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>assignments-indices</code></td>
+<td><code>(N, R, D)</code></td>
+<td>Integer indices mapping each resonance target to its reconstructed daughters. Fill unused daughter slots with <code>-1</code>.</td>
+</tr>
+<tr>
+<td><code>assignments-mask</code></td>
+<td><code>(N, R)</code></td>
+<td>Boolean mask indicating whether <strong>all</strong> required daughters for each resonance are successfully reconstructed.</td>
+</tr>
+<tr>
+<td><code>assignments-indices-mask</code></td>
+<td><code>(N, R, D)</code></td>
+<td>Per-daughter mask specifying which child indices are valid. <code>0</code> indicates padding for missing daughters.</td>
+</tr>
+<tr>
+<td><code>subprocess_id</code></td>
+<td><code>(N,)</code></td>
+<td>Integer label of the generating subprocess (Feynman diagram class).</td>
+</tr>
+<tr>
+<td><code>process_names</code></td>
+<td><code>(N,)</code></td>
+<td>String label of each subprocess. Must match the ordering in <code>event_info.yaml</code> and align with <code>subprocess_id</code>. Used only in preprocessing and producing <code>normalization.pt</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="quick-summary">Quick Summary<a class="headerlink" href="#quick-summary" title="Permanent link">&para;</a></h4>
+<ul>
+<li>R = resonance targets, D = padded daughters</li>
+<li>Children index into the 18×7 <code>x</code> slots; <code>-1</code> = padding</li>
+<li><code>assignments-mask</code> expects <strong>all</strong> daughters present; per-daughter gaps use <code>assignments-indices-mask</code></li>
+</ul>
+<blockquote>
+<p>📐 <strong>Assignment internals:</strong> During conversion EveNet scans your assignment map to determine <code>R</code> and <code>D</code>, initialises
+arrays filled with <code>-1</code>, and then writes the actual child indices along with boolean masks. The snippet below mirrors
+the loader logic so you can generate matching tensors in your own pipeline:</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="n">full_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">num_events</span><span class="p">,</span> <span class="n">n_targets</span><span class="p">,</span> <span class="n">max_daughters</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="n">full_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_events</span><span class="p">,</span> <span class="n">n_targets</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+<span class="n">index_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_events</span><span class="p">,</span> <span class="n">n_targets</span><span class="p">,</span> <span class="n">max_daughters</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+<span class="c1"># Fill with your resonance→daughter mappings; mark valid entries in the masks.</span>
+</code></pre></div>
+<h3 id="segmentation-head">Segmentation Head<a class="headerlink" href="#segmentation-head" title="Permanent link">&para;</a></h3>
+<h4 id="index-conventions_1">Index conventions<a class="headerlink" href="#index-conventions_1" title="Permanent link">&para;</a></h4>
+<ul>
+<li>S = max number of resonance instances across all processes + 1 null instance (null at index S−1)</li>
+<li>Number of resonance tags + 1 null tag (null at index 0)</li>
+<li><strong>Tensors are boolean</strong> except momentum.</li>
+</ul>
+<h4 id="target-tensors_1">Target Tensors<a class="headerlink" href="#target-tensors_1" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Shape</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>segmentation-class</code></td>
+<td>(N, S, T)</td>
+<td>One-hot resonance <strong>tag</strong> for each resonance <strong>instance</strong>. Null tag = 0; null instance = S-1.</td>
+</tr>
+<tr>
+<td><code>segmentation-data</code></td>
+<td>(N, S, 18)</td>
+<td>Mask assigning input particles (18 dims) to each instance. Null instance = all zeros.</td>
+</tr>
+<tr>
+<td><code>segmentation-momentum</code></td>
+<td>(N, S, 4)</td>
+<td>True four-momentum (E,px,py,pz) for each instance; null instance = zeros.</td>
+</tr>
+<tr>
+<td><code>segmentation-full-class</code></td>
+<td>(N, S, T)</td>
+<td>1 if instance is fully reconstructable for tag <code>t</code>; else assigned to null tag.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="quick-summary_1">Quick Summary<a class="headerlink" href="#quick-summary_1" title="Permanent link">&para;</a></h4>
+<ul>
+<li>S = instances, T = classes</li>
+<li>Both include a null entry</li>
+<li>Boolean everywhere except 4-momentum</li>
+<li>Segmentation maps:</li>
+<li>instance → tag (<code>segmentation-class</code>)</li>
+<li>instance → particles (<code>segmentation-data</code>)</li>
+<li>instance → true 4-vector (<code>segmentation-momentum</code>)</li>
+<li>instance → fully-reconstructable flag (<code>segmentation-full-class</code>)</li>
+</ul>
+<h3 id="worked-input-example">Worked Input Example<a class="headerlink" href="#worked-input-example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="n">example</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">7</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>  <span class="c1"># fixed to (18, 7) for pretraining compatibility</span>
+    <span class="s2">&quot;x_mask&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N</span><span class="p">,</span> <span class="mi">18</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span>
+    <span class="c1"># Optional globals — drop both keys if unused</span>
+    <span class="s2">&quot;conditions&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N</span><span class="p">,</span> <span class="n">C</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+    <span class="s2">&quot;conditions_mask&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">N</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span>
+    <span class="c1"># Classification head (weights default to ones if omitted)</span>
+    <span class="s2">&quot;classification&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
+    <span class="s2">&quot;event_weight&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">N</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+    <span class="c1"># Head-specific entries sized by your resonance/segment definitions</span>
+    <span class="s2">&quot;assignments-indices&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">N</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">D</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+    <span class="s2">&quot;assignments-mask&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N</span><span class="p">,</span> <span class="n">R</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span>
+    <span class="s2">&quot;segmentation-data&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="mi">18</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span>
+    <span class="c1"># ... add heads you enabled ...</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Feel free to adjust the head-specific dimensions (<code>R</code>, <code>D</code>, <code>S</code>, <code>T</code>) and the number of condition scalars <code>C</code> to match
+your physics process. The only fixed sizes are the point-cloud slots <code>(18, 7)</code> shared across datasets. Keep the YAML and
+the <code>.npz</code> dictionary in sync so the converter knows how many channels to expect and how to name them.</p>
+<hr />
+<p><a id="npz--parquet-conversion"></a></p>
+<h2 id="npz-parquet-conversion">🔄 NPZ → Parquet Conversion<a class="headerlink" href="#npz-parquet-conversion" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Assemble events</strong> into Python lists and save them with <code>numpy.savez</code> (or <code>savez_compressed</code>). Each key listed above
+   becomes an array inside the archive.</li>
+<li><strong>Invoke the converter</strong> using the new dataloader-friendly CLI. Point to your event-info YAML via <code>--config</code> and
+   choose whether you are supplying pre-split files or a combined set that should be split by the tool:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="c1"># Explicit file-level splits</span>
+python<span class="w"> </span>preprocessing/preprocess.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span>share/event_info/pretrain.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--train<span class="w"> </span>/path/to/train_*.npz<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--val<span class="w">   </span>/path/to/val_*.npz<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--test<span class="w">  </span>/path/to/test_*.npz<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--store_dir<span class="w"> </span>/path/to/output
+
+<span class="c1"># Event-level split with ratios (defaults to train only)</span>
+python<span class="w"> </span>preprocessing/preprocess.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span>share/event_info/pretrain.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--files<span class="w"> </span>/path/to/combined_*.npz<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--split_ratio<span class="w"> </span><span class="m">0</span>.8,0.1,0.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--store_dir<span class="w"> </span>/path/to/output
+</code></pre></div>
+<ul>
+<li>Use <code>--file</code> instead of <code>--files</code> when processing a single archive.</li>
+<li>Set <code>-v/--verbose</code> to see detailed sanity-check output and saved file sizes.</li>
+</ul>
+<p>The converter reads the YAML to recover feature names, masks, and head activation flags, then emits:
+    - <code>train.parquet</code>, <code>val.parquet</code>, and <code>test.parquet</code> containing flattened tensors (only for splits with data).
+    - <code>shape_metadata.json</code> with the original shapes (e.g., <code>(18, 7)</code> for <code>x</code>).
+    - <code>normalization.pt</code> with channel-wise statistics and class weights computed from the <strong>training</strong> split.</p>
+<ol>
+<li><strong>Inspect the logs.</strong> The script reports how many particles, invisible objects, and resonances were valid across the
+   dataset—helpful when debugging mask alignment. Statistics are aggregated only from the training data so validation
+   and test remain untouched.</li>
+</ol>
+<hr />
+<p><a id="runtime-checklist"></a></p>
+<h2 id="runtime-checklist">✅ Runtime Checklist<a class="headerlink" href="#runtime-checklist" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>platform.data_parquet_dir</code> points to the folder with the generated parquet shards and <code>shape_metadata.json</code>.</li>
+<li><code>options.Dataset.event_info</code> references the same YAML (<code>share/event_info/pretrain.yaml</code> or your copy).</li>
+<li><code>options.Dataset.normalization_file</code> matches the <code>normalization.pt</code> produced during conversion.</li>
+<li>Only the heads you activated in the training YAML have matching supervision tensors in the parquet files.</li>
+</ul>
+<p>With those pieces in place, EveNet will rebuild the full event dictionary on the fly, apply the appropriate circular
+normalization for <code>normalize_uniform</code> channels, and route each tensor to the corresponding head.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../getting_started/" class="btn btn-neutral float-left" title="Getting Started"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../model_architecture/" class="btn btn-neutral float-right" title="Model Architecture">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/UW-EPE-ML/EveNet_Public" class="fa fa-code-fork" style="color: #fcfcfc"> EveNet_Public</a>
+        </span>
+    
+    
+      <span><a href="../getting_started/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../model_architecture/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
